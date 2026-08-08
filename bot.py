@@ -1,8 +1,12 @@
+
 import os
 import io
 import re
+import json
+import random
 import sqlite3
 import datetime
+from typing import Optional
 
 import discord
 from discord import app_commands
@@ -10,1911 +14,1216 @@ from discord.ext import commands
 
 
 # =========================================================
-# BANCO DE DADOS
+# CONFIGURAÇÃO / BANCO
 # =========================================================
 
-db = sqlite3.connect("honradinho.db")
+DB_PATH = "honradinho.db"
 
-cursor = db.cursor()
+db = sqlite3.connect(DB_PATH)
+db.row_factory = sqlite3.Row
+cur = db.cursor()
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS ticket_config (
+cur.executescript("""
+CREATE TABLE IF NOT EXISTS guild_config (
     guild_id INTEGER PRIMARY KEY,
-    staff_role_id INTEGER,
-    logs_channel_id INTEGER,
-    category_id INTEGER
-)
-""")
+    ticket_staff_role_id INTEGER,
+    ticket_logs_channel_id INTEGER,
+    ticket_category_id INTEGER,
+    welcome_channel_id INTEGER,
+    goodbye_channel_id INTEGER,
+    autorole_id INTEGER,
+    welcome_message TEXT DEFAULT 'Bem-vindo(a) {user} ao **{server}**! 🎉 Você é o membro #{members}.',
+    goodbye_message TEXT DEFAULT '{user} saiu do **{server}**. 👋',
+    suggestions_channel_id INTEGER,
+    moderation_logs_channel_id INTEGER
+);
 
+CREATE TABLE IF NOT EXISTS user_stats (
+    guild_id INTEGER,
+    user_id INTEGER,
+    xp INTEGER DEFAULT 0,
+    level INTEGER DEFAULT 0,
+    balance INTEGER DEFAULT 0,
+    last_daily TEXT,
+    PRIMARY KEY (guild_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS warnings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id INTEGER,
+    user_id INTEGER,
+    moderator_id INTEGER,
+    reason TEXT,
+    created_at TEXT
+);
+""")
 db.commit()
 
 
-def criar_config_servidor(guild_id: int):
-    cursor.execute(
-        """
-        INSERT OR IGNORE INTO ticket_config (guild_id)
-        VALUES (?)
-        """,
-        (guild_id,)
+def ensure_guild(guild_id: int):
+    cur.execute("INSERT OR IGNORE INTO guild_config (guild_id) VALUES (?)", (guild_id,))
+    db.commit()
+
+
+def get_guild_config(guild_id: int):
+    ensure_guild(guild_id)
+    cur.execute("SELECT * FROM guild_config WHERE guild_id = ?", (guild_id,))
+    return cur.fetchone()
+
+
+def set_guild_config(guild_id: int, field: str, value):
+    allowed = {
+        "ticket_staff_role_id",
+        "ticket_logs_channel_id",
+        "ticket_category_id",
+        "welcome_channel_id",
+        "goodbye_channel_id",
+        "autorole_id",
+        "welcome_message",
+        "goodbye_message",
+        "suggestions_channel_id",
+        "moderation_logs_channel_id",
+    }
+    if field not in allowed:
+        raise ValueError("Campo de configuração inválido.")
+    ensure_guild(guild_id)
+    cur.execute(f"UPDATE guild_config SET {field} = ? WHERE guild_id = ?", (value, guild_id))
+    db.commit()
+
+
+def ensure_user(guild_id: int, user_id: int):
+    cur.execute(
+        "INSERT OR IGNORE INTO user_stats (guild_id, user_id) VALUES (?, ?)",
+        (guild_id, user_id),
     )
     db.commit()
 
 
-def pegar_config(guild_id: int):
-    criar_config_servidor(guild_id)
-
-    cursor.execute(
-        """
-        SELECT staff_role_id, logs_channel_id, category_id
-        FROM ticket_config
-        WHERE guild_id = ?
-        """,
-        (guild_id,)
+def get_user_stats(guild_id: int, user_id: int):
+    ensure_user(guild_id, user_id)
+    cur.execute(
+        "SELECT * FROM user_stats WHERE guild_id = ? AND user_id = ?",
+        (guild_id, user_id),
     )
-
-    return cursor.fetchone()
-
-
-def definir_staff(guild_id: int, role_id: int):
-    criar_config_servidor(guild_id)
-
-    cursor.execute(
-        """
-        UPDATE ticket_config
-        SET staff_role_id = ?
-        WHERE guild_id = ?
-        """,
-        (role_id, guild_id)
-    )
-
-    db.commit()
-
-
-def definir_logs(guild_id: int, channel_id: int):
-    criar_config_servidor(guild_id)
-
-    cursor.execute(
-        """
-        UPDATE ticket_config
-        SET logs_channel_id = ?
-        WHERE guild_id = ?
-        """,
-        (channel_id, guild_id)
-    )
-
-    db.commit()
-
-
-def definir_categoria(guild_id: int, category_id: int):
-    criar_config_servidor(guild_id)
-
-    cursor.execute(
-        """
-        UPDATE ticket_config
-        SET category_id = ?
-        WHERE guild_id = ?
-        """,
-        (category_id, guild_id)
-    )
-
-    db.commit()
+    return cur.fetchone()
 
 
 # =========================================================
-# INTENTS
+# INTENTS / BOT
 # =========================================================
 
 intents = discord.Intents.default()
-
 intents.members = True
 intents.message_content = True
 
 
-# =========================================================
-# BOT
-# =========================================================
-
 class HonraDinho(commands.Bot):
-
     def __init__(self):
-        super().__init__(
-            command_prefix="!",
-            intents=intents
-        )
+        super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
-
-        # Views persistentes
         self.add_view(TicketPanelView())
         self.add_view(TicketActionsView())
+        self.add_view(SuggestionView())
 
-        # Adiciona grupo de configuração
-        self.tree.add_command(ticket_config)
+        self.tree.add_command(ticket_config_group)
+        self.tree.add_command(welcome_config_group)
+        self.tree.add_command(logs_config_group)
+        self.tree.add_command(suggestions_config_group)
+        self.tree.add_command(economy_group)
 
-        comandos = await self.tree.sync()
-
-        print(
-            f"{len(comandos)} comandos sincronizados."
-        )
+        synced = await self.tree.sync()
+        print(f"{len(synced)} comandos sincronizados com o Discord.")
 
 
 bot = HonraDinho()
 
 
 # =========================================================
-# EVENTO ONLINE
+# AUXILIARES
 # =========================================================
 
-@bot.event
-async def on_ready():
-
-    print("=" * 45)
-    print(f"BOT ONLINE: {bot.user}")
-    print(f"ID: {bot.user.id}")
-    print("=" * 45)
-
-    await bot.change_presence(
-        status=discord.Status.online,
-        activity=discord.Game(
-            name="/ajuda | HonraDinho"
-        )
-    )
+def safe_name(text: str) -> str:
+    text = text.lower()
+    text = re.sub(r"[^a-z0-9-]", "-", text)
+    text = re.sub(r"-+", "-", text).strip("-")
+    return (text or "usuario")[:40]
 
 
-# =========================================================
-# FUNÇÕES AUXILIARES
-# =========================================================
-
-def nome_seguro(texto: str):
-
-    texto = texto.lower()
-
-    texto = re.sub(
-        r"[^a-z0-9-]",
-        "-",
-        texto
-    )
-
-    texto = re.sub(
-        r"-+",
-        "-",
-        texto
-    )
-
-    texto = texto.strip("-")
-
-    return texto[:40]
-
-
-def extrair_dado_topic(topic: str | None, chave: str):
-
+def topic_value(topic: Optional[str], key: str):
     if not topic:
         return None
-
-    for parte in topic.split("|"):
-
-        parte = parte.strip()
-
-        if parte.startswith(chave + ":"):
-
-            return parte.split(
-                ":",
-                1
-            )[1].strip()
-
+    for part in topic.split("|"):
+        part = part.strip()
+        if part.startswith(key + ":"):
+            return part.split(":", 1)[1].strip()
     return None
 
 
-def ticket_do_usuario(
-    guild: discord.Guild,
-    user_id: int
-):
-
-    for canal in guild.text_channels:
-
-        valor = extrair_dado_topic(
-            canal.topic,
-            "ticket_user"
-        )
-
-        if valor == str(user_id):
-            return canal
-
+def ticket_for_user(guild: discord.Guild, user_id: int):
+    for channel in guild.text_channels:
+        if topic_value(channel.topic, "ticket_user") == str(user_id):
+            return channel
     return None
 
 
-def usuario_e_staff_ticket(
-    canal: discord.TextChannel
-):
-
-    usuario = extrair_dado_topic(
-        canal.topic,
-        "ticket_user"
-    )
-
-    staff = extrair_dado_topic(
-        canal.topic,
-        "staff"
-    )
-
-    categoria = extrair_dado_topic(
-        canal.topic,
-        "tipo"
-    )
-
-    try:
-        usuario = int(usuario) if usuario else None
-    except ValueError:
-        usuario = None
-
-    try:
-        staff = int(staff) if staff else None
-    except ValueError:
-        staff = None
-
-    return usuario, staff, categoria
+def update_topic_field(topic: Optional[str], key: str, value: str):
+    parts = []
+    if topic:
+        for part in topic.split("|"):
+            part = part.strip()
+            if not part.startswith(key + ":"):
+                parts.append(part)
+    parts.append(f"{key}:{value}")
+    return " | ".join(parts)
 
 
-def alterar_staff_topic(
-    canal: discord.TextChannel,
-    staff_id: int
-):
-
-    partes = []
-
-    if canal.topic:
-
-        for parte in canal.topic.split("|"):
-
-            parte = parte.strip()
-
-            if not parte.startswith("staff:"):
-                partes.append(parte)
-
-    partes.append(
-        f"staff:{staff_id}"
-    )
-
-    return " | ".join(partes)
+async def make_transcript(channel: discord.TextChannel):
+    lines = [
+        "HONRADINHO - TRANSCRIPT DE TICKET",
+        "=" * 60,
+        f"Servidor: {channel.guild.name}",
+        f"Canal: #{channel.name}",
+        f"Canal ID: {channel.id}",
+        "=" * 60,
+        "",
+    ]
+    async for msg in channel.history(limit=None, oldest_first=True):
+        ts = msg.created_at.strftime("%d/%m/%Y %H:%M:%S UTC")
+        content = msg.content or ""
+        lines.append(f"[{ts}] {msg.author} ({msg.author.id}): {content}")
+        for att in msg.attachments:
+            lines.append(f"  [ANEXO] {att.url}")
+    data = "\n".join(lines).encode("utf-8")
+    return io.BytesIO(data)
 
 
-async def gerar_transcript(
-    canal: discord.TextChannel
-):
-
-    linhas = []
-
-    linhas.append(
-        "HONRADINHO - TRANSCRIPT DE TICKET"
-    )
-
-    linhas.append(
-        "=" * 50
-    )
-
-    linhas.append(
-        f"Servidor: {canal.guild.name}"
-    )
-
-    linhas.append(
-        f"Canal: #{canal.name}"
-    )
-
-    linhas.append(
-        f"ID do canal: {canal.id}"
-    )
-
-    linhas.append(
-        "=" * 50
-    )
-
-    linhas.append("")
-
-    async for mensagem in canal.history(
-        limit=None,
-        oldest_first=True
-    ):
-
-        horario = mensagem.created_at.strftime(
-            "%d/%m/%Y %H:%M:%S UTC"
-        )
-
-        autor = (
-            f"{mensagem.author} "
-            f"({mensagem.author.id})"
-        )
-
-        conteudo = mensagem.content or ""
-
-        linhas.append(
-            f"[{horario}] {autor}: {conteudo}"
-        )
-
-        for anexo in mensagem.attachments:
-
-            linhas.append(
-                f"    [ANEXO] {anexo.url}"
-            )
-
-        for embed in mensagem.embeds:
-
-            if embed.title:
-
-                linhas.append(
-                    f"    [EMBED] {embed.title}"
-                )
-
-            if embed.description:
-
-                linhas.append(
-                    f"    {embed.description}"
-                )
-
-    texto = "\n".join(linhas)
-
-    arquivo = io.BytesIO(
-        texto.encode("utf-8")
-    )
-
-    arquivo.seek(0)
-
-    return arquivo
-
-
-async def enviar_log(
-    guild: discord.Guild,
-    embed: discord.Embed,
-    arquivo=None,
-    nome_arquivo=None
-):
-
-    config = pegar_config(
-        guild.id
-    )
-
-    logs_id = config[1]
-
-    if not logs_id:
+async def send_ticket_log(guild: discord.Guild, embed: discord.Embed, file=None, filename=None):
+    cfg = get_guild_config(guild.id)
+    channel_id = cfg["ticket_logs_channel_id"]
+    if not channel_id:
         return
-
-    canal = guild.get_channel(
-        logs_id
-    )
-
-    if not isinstance(
-        canal,
-        discord.TextChannel
-    ):
+    channel = guild.get_channel(channel_id)
+    if not isinstance(channel, discord.TextChannel):
         return
-
     try:
-
-        if arquivo:
-
-            await canal.send(
-                embed=embed,
-                file=discord.File(
-                    arquivo,
-                    filename=nome_arquivo
-                )
-            )
-
+        if file:
+            await channel.send(embed=embed, file=discord.File(file, filename=filename))
         else:
-
-            await canal.send(
-                embed=embed
-            )
-
+            await channel.send(embed=embed)
     except discord.HTTPException:
         pass
 
 
+async def send_mod_log(guild: discord.Guild, embed: discord.Embed):
+    cfg = get_guild_config(guild.id)
+    channel_id = cfg["moderation_logs_channel_id"]
+    if not channel_id:
+        return
+    channel = guild.get_channel(channel_id)
+    if isinstance(channel, discord.TextChannel):
+        try:
+            await channel.send(embed=embed)
+        except discord.HTTPException:
+            pass
+
+
+def format_template(text: str, member: discord.Member):
+    return (
+        text.replace("{user}", member.mention)
+        .replace("{username}", member.name)
+        .replace("{server}", member.guild.name)
+        .replace("{members}", str(member.guild.member_count))
+    )
+
+
 # =========================================================
-# CRIAR TICKET
+# EVENTOS
 # =========================================================
 
-async def criar_ticket(
-    interaction: discord.Interaction,
-    tipo: str,
-    emoji: str
-):
+@bot.event
+async def on_ready():
+    print("=" * 50)
+    print(f"BOT ONLINE: {bot.user}")
+    print(f"ID: {bot.user.id if bot.user else 'N/A'}")
+    print("=" * 50)
+    await bot.change_presence(
+        status=discord.Status.online,
+        activity=discord.Game(name="/ajuda | HonraDinho")
+    )
 
+
+@bot.event
+async def on_member_join(member: discord.Member):
+    cfg = get_guild_config(member.guild.id)
+
+    if cfg["autorole_id"]:
+        role = member.guild.get_role(cfg["autorole_id"])
+        if role:
+            try:
+                await member.add_roles(role, reason="Autorole HonraDinho")
+            except discord.Forbidden:
+                pass
+
+    if cfg["welcome_channel_id"]:
+        channel = member.guild.get_channel(cfg["welcome_channel_id"])
+        if isinstance(channel, discord.TextChannel):
+            embed = discord.Embed(
+                title="👋 Novo membro!",
+                description=format_template(cfg["welcome_message"], member),
+                color=discord.Color.green(),
+                timestamp=discord.utils.utcnow(),
+            )
+            embed.set_thumbnail(url=member.display_avatar.url)
+            await channel.send(embed=embed)
+
+    embed = discord.Embed(
+        title="📥 Membro entrou",
+        description=f"{member.mention} entrou no servidor.",
+        color=discord.Color.green(),
+        timestamp=discord.utils.utcnow(),
+    )
+    embed.add_field(name="ID", value=str(member.id))
+    await send_mod_log(member.guild, embed)
+
+
+@bot.event
+async def on_member_remove(member: discord.Member):
+    cfg = get_guild_config(member.guild.id)
+
+    if cfg["goodbye_channel_id"]:
+        channel = member.guild.get_channel(cfg["goodbye_channel_id"])
+        if isinstance(channel, discord.TextChannel):
+            text = (
+                cfg["goodbye_message"]
+                .replace("{user}", member.name)
+                .replace("{username}", member.name)
+                .replace("{server}", member.guild.name)
+                .replace("{members}", str(member.guild.member_count))
+            )
+            embed = discord.Embed(
+                title="👋 Membro saiu",
+                description=text,
+                color=discord.Color.red(),
+                timestamp=discord.utils.utcnow(),
+            )
+            embed.set_thumbnail(url=member.display_avatar.url)
+            await channel.send(embed=embed)
+
+    embed = discord.Embed(
+        title="📤 Membro saiu",
+        description=f"**{member}** saiu do servidor.",
+        color=discord.Color.red(),
+        timestamp=discord.utils.utcnow(),
+    )
+    embed.add_field(name="ID", value=str(member.id))
+    await send_mod_log(member.guild, embed)
+
+
+@bot.event
+async def on_message(message: discord.Message):
+    if message.author.bot or not message.guild:
+        return
+
+    ensure_user(message.guild.id, message.author.id)
+    stats = get_user_stats(message.guild.id, message.author.id)
+
+    gain = random.randint(5, 12)
+    new_xp = stats["xp"] + gain
+    current_level = stats["level"]
+    needed = (current_level + 1) * 100
+
+    if new_xp >= needed:
+        current_level += 1
+        new_xp -= needed
+        cur.execute(
+            "UPDATE user_stats SET xp = ?, level = ? WHERE guild_id = ? AND user_id = ?",
+            (new_xp, current_level, message.guild.id, message.author.id),
+        )
+        db.commit()
+        try:
+            await message.channel.send(
+                f"🎉 {message.author.mention}, você chegou ao **nível {current_level}**!"
+            )
+        except discord.HTTPException:
+            pass
+    else:
+        cur.execute(
+            "UPDATE user_stats SET xp = ? WHERE guild_id = ? AND user_id = ?",
+            (new_xp, message.guild.id, message.author.id),
+        )
+        db.commit()
+
+    await bot.process_commands(message)
+
+
+@bot.event
+async def on_message_delete(message: discord.Message):
+    if not message.guild or message.author.bot:
+        return
+    embed = discord.Embed(
+        title="🗑️ Mensagem apagada",
+        color=discord.Color.orange(),
+        timestamp=discord.utils.utcnow(),
+    )
+    embed.add_field(name="Autor", value=message.author.mention, inline=False)
+    embed.add_field(name="Canal", value=message.channel.mention, inline=False)
+    embed.add_field(name="Conteúdo", value=(message.content or "*sem texto*")[:1024], inline=False)
+    await send_mod_log(message.guild, embed)
+
+
+@bot.event
+async def on_message_edit(before: discord.Message, after: discord.Message):
+    if not before.guild or before.author.bot or before.content == after.content:
+        return
+    embed = discord.Embed(
+        title="✏️ Mensagem editada",
+        color=discord.Color.gold(),
+        timestamp=discord.utils.utcnow(),
+    )
+    embed.add_field(name="Autor", value=before.author.mention, inline=False)
+    embed.add_field(name="Antes", value=(before.content or "*vazio*")[:1024], inline=False)
+    embed.add_field(name="Depois", value=(after.content or "*vazio*")[:1024], inline=False)
+    await send_mod_log(before.guild, embed)
+
+
+# =========================================================
+# TICKETS V2
+# =========================================================
+
+async def create_ticket(interaction: discord.Interaction, ticket_type: str, emoji: str):
     guild = interaction.guild
+    if not guild:
+        await interaction.response.send_message("❌ Use em um servidor.", ephemeral=True)
+        return
 
-    if guild is None:
-
+    existing = ticket_for_user(guild, interaction.user.id)
+    if existing:
         await interaction.response.send_message(
-            "❌ Este recurso funciona apenas em servidores.",
+            f"⚠️ Você já possui um ticket aberto: {existing.mention}",
             ephemeral=True
         )
         return
 
-    existente = ticket_do_usuario(
-        guild,
-        interaction.user.id
-    )
-
-    if existente:
-
-        await interaction.response.send_message(
-            (
-                "⚠️ Você já possui um ticket aberto:\n"
-                f"{existente.mention}"
-            ),
-            ephemeral=True
-        )
-        return
-
-    config = pegar_config(
-        guild.id
-    )
-
-    staff_id = config[0]
-    categoria_id = config[2]
-
-    if not staff_id:
-
-        await interaction.response.send_message(
-            (
-                "❌ O sistema ainda não possui um cargo "
-                "de Staff configurado."
-            ),
-            ephemeral=True
-        )
-        return
-
-    staff_role = guild.get_role(
-        staff_id
-    )
+    cfg = get_guild_config(guild.id)
+    staff_role = guild.get_role(cfg["ticket_staff_role_id"]) if cfg["ticket_staff_role_id"] else None
 
     if not staff_role:
-
         await interaction.response.send_message(
-            "❌ O cargo da Staff configurado não existe mais.",
+            "❌ O cargo da Staff ainda não foi configurado.",
             ephemeral=True
         )
         return
 
-    categoria = None
+    await interaction.response.defer(ephemeral=True)
 
-    if categoria_id:
-
-        canal_categoria = guild.get_channel(
-            categoria_id
-        )
-
-        if isinstance(
-            canal_categoria,
-            discord.CategoryChannel
-        ):
-            categoria = canal_categoria
-
-    if categoria is None:
-
+    category = guild.get_channel(cfg["ticket_category_id"]) if cfg["ticket_category_id"] else None
+    if not isinstance(category, discord.CategoryChannel):
         try:
-
-            categoria = await guild.create_category(
-                "TICKETS",
-                reason="Categoria criada pelo HonraDinho"
-            )
-
-            definir_categoria(
-                guild.id,
-                categoria.id
-            )
-
+            category = await guild.create_category("TICKETS", reason="HonraDinho Tickets")
+            set_guild_config(guild.id, "ticket_category_id", category.id)
         except discord.Forbidden:
-
-            await interaction.response.send_message(
-                (
-                    "❌ Não consegui criar a categoria. "
-                    "Verifique minha permissão "
-                    "**Gerenciar Canais**."
-                ),
-                ephemeral=True
-            )
+            await interaction.followup.send("❌ Não tenho permissão para criar categoria.", ephemeral=True)
             return
 
-    await interaction.response.defer(
-        ephemeral=True
-    )
-
-    bot_member = guild.me
-
     overwrites = {
-
-        guild.default_role:
-            discord.PermissionOverwrite(
-                view_channel=False
-            ),
-
-        interaction.user:
-            discord.PermissionOverwrite(
-                view_channel=True,
-                send_messages=True,
-                read_message_history=True,
-                attach_files=True,
-                embed_links=True
-            ),
-
-        staff_role:
-            discord.PermissionOverwrite(
-                view_channel=True,
-                send_messages=True,
-                read_message_history=True,
-                attach_files=True,
-                embed_links=True
-            )
+        guild.default_role: discord.PermissionOverwrite(view_channel=False),
+        interaction.user: discord.PermissionOverwrite(
+            view_channel=True, send_messages=True, read_message_history=True,
+            attach_files=True, embed_links=True
+        ),
+        staff_role: discord.PermissionOverwrite(
+            view_channel=True, send_messages=True, read_message_history=True,
+            attach_files=True, embed_links=True
+        )
     }
 
-    if bot_member:
-
-        overwrites[bot_member] = (
-            discord.PermissionOverwrite(
-                view_channel=True,
-                send_messages=True,
-                read_message_history=True,
-                manage_channels=True,
-                manage_messages=True
-            )
+    if guild.me:
+        overwrites[guild.me] = discord.PermissionOverwrite(
+            view_channel=True, send_messages=True, read_message_history=True,
+            manage_channels=True, manage_messages=True
         )
 
-    usuario = nome_seguro(
-        interaction.user.name
-    )
-
-    if not usuario:
-
-        usuario = str(
-            interaction.user.id
-        )
-
-    tipo_nome = nome_seguro(
-        tipo
-    )
-
-    nome = (
-        f"{tipo_nome}-{usuario}"
-    )
-
-    topic = (
-        f"ticket_user:{interaction.user.id} | "
-        f"tipo:{tipo} | "
-        f"staff:0"
-    )
+    name = f"{safe_name(ticket_type)}-{safe_name(interaction.user.name)}"
+    topic = f"ticket_user:{interaction.user.id} | tipo:{ticket_type} | staff:0"
 
     try:
-
-        canal = await guild.create_text_channel(
-            name=nome,
-            category=categoria,
+        channel = await guild.create_text_channel(
+            name=name,
+            category=category,
             overwrites=overwrites,
             topic=topic,
-            reason=(
-                f"Ticket {tipo} aberto por "
-                f"{interaction.user}"
-            )
+            reason=f"Ticket {ticket_type} aberto por {interaction.user}",
         )
-
     except discord.Forbidden:
-
-        await interaction.followup.send(
-            (
-                "❌ Não tenho permissão para "
-                "criar canais."
-            ),
-            ephemeral=True
-        )
+        await interaction.followup.send("❌ Não tenho permissão para criar o canal.", ephemeral=True)
         return
 
     embed = discord.Embed(
-        title=f"{emoji} Ticket de {tipo}",
+        title=f"{emoji} Ticket de {ticket_type}",
         description=(
             f"Olá {interaction.user.mention}!\n\n"
-            "Seu ticket foi aberto com sucesso.\n"
-            "Explique detalhadamente o motivo "
-            "do atendimento.\n\n"
-            f"{staff_role.mention}, um novo "
-            "ticket está aguardando atendimento."
+            "Explique abaixo o motivo do atendimento.\n"
+            f"{staff_role.mention}, há um novo ticket aguardando."
         ),
         color=discord.Color.blurple(),
-        timestamp=discord.utils.utcnow()
+        timestamp=discord.utils.utcnow(),
     )
+    embed.add_field(name="👤 Usuário", value=interaction.user.mention)
+    embed.add_field(name="📂 Categoria", value=ticket_type)
+    embed.add_field(name="🙋 Atendimento", value="Aguardando Staff", inline=False)
+    embed.set_footer(text="HonraDinho • Tickets V2")
 
-    embed.add_field(
-        name="👤 Usuário",
-        value=interaction.user.mention,
-        inline=True
-    )
-
-    embed.add_field(
-        name="📂 Categoria",
-        value=tipo,
-        inline=True
-    )
-
-    embed.add_field(
-        name="🛡️ Atendimento",
-        value="Aguardando Staff",
-        inline=False
-    )
-
-    embed.set_footer(
-        text="HonraDinho • Tickets V2"
-    )
-
-    await canal.send(
-        content=(
-            f"{interaction.user.mention} "
-            f"{staff_role.mention}"
-        ),
+    await channel.send(
+        content=f"{interaction.user.mention} {staff_role.mention}",
         embed=embed,
         view=TicketActionsView(),
-        allowed_mentions=discord.AllowedMentions(
-            users=True,
-            roles=True
-        )
+        allowed_mentions=discord.AllowedMentions(users=True, roles=True),
     )
 
-    await interaction.followup.send(
-        (
-            "✅ Ticket criado com sucesso!\n"
-            f"➡️ {canal.mention}"
-        ),
-        ephemeral=True
-    )
+    await interaction.followup.send(f"✅ Ticket criado: {channel.mention}", ephemeral=True)
 
     log = discord.Embed(
         title="🎫 Ticket aberto",
         color=discord.Color.green(),
-        timestamp=discord.utils.utcnow()
+        timestamp=discord.utils.utcnow(),
     )
+    log.add_field(name="Usuário", value=interaction.user.mention)
+    log.add_field(name="Tipo", value=ticket_type)
+    log.add_field(name="Canal", value=channel.mention)
+    await send_ticket_log(guild, log)
 
-    log.add_field(
-        name="Usuário",
-        value=(
-            f"{interaction.user.mention}\n"
-            f"`{interaction.user.id}`"
-        )
-    )
-
-    log.add_field(
-        name="Categoria",
-        value=tipo
-    )
-
-    log.add_field(
-        name="Canal",
-        value=canal.mention
-    )
-
-    await enviar_log(
-        guild,
-        log
-    )
-
-
-# =========================================================
-# SELECT DE CATEGORIA
-# =========================================================
 
 class TicketSelect(discord.ui.Select):
-
     def __init__(self):
-
         options = [
-
-            discord.SelectOption(
-                label="Suporte",
-                description="Precisa de ajuda da equipe?",
-                emoji="🆘",
-                value="Suporte"
-            ),
-
-            discord.SelectOption(
-                label="Denúncia",
-                description="Denuncie membros ou problemas.",
-                emoji="🚨",
-                value="Denúncia"
-            ),
-
-            discord.SelectOption(
-                label="Compra",
-                description="Assuntos relacionados a compras.",
-                emoji="🛒",
-                value="Compra"
-            ),
-
-            discord.SelectOption(
-                label="Parceria",
-                description="Propostas e parcerias.",
-                emoji="🤝",
-                value="Parceria"
-            )
+            discord.SelectOption(label="Suporte", description="Ajuda e dúvidas.", emoji="🆘", value="Suporte"),
+            discord.SelectOption(label="Denúncia", description="Denunciar membro ou problema.", emoji="🚨", value="Denúncia"),
+            discord.SelectOption(label="Compra", description="Assuntos comerciais.", emoji="🛒", value="Compra"),
+            discord.SelectOption(label="Parceria", description="Parcerias e propostas.", emoji="🤝", value="Parceria"),
         ]
-
         super().__init__(
             placeholder="Selecione o motivo do ticket...",
             min_values=1,
             max_values=1,
             options=options,
-            custom_id="honradinho:ticket_select"
+            custom_id="honradinho:ticket_select",
         )
 
-    async def callback(
-        self,
-        interaction: discord.Interaction
-    ):
+    async def callback(self, interaction: discord.Interaction):
+        ticket_type = self.values[0]
+        emojis = {"Suporte": "🆘", "Denúncia": "🚨", "Compra": "🛒", "Parceria": "🤝"}
+        await create_ticket(interaction, ticket_type, emojis[ticket_type])
 
-        tipo = self.values[0]
-
-        emojis = {
-            "Suporte": "🆘",
-            "Denúncia": "🚨",
-            "Compra": "🛒",
-            "Parceria": "🤝"
-        }
-
-        await criar_ticket(
-            interaction,
-            tipo,
-            emojis.get(
-                tipo,
-                "🎫"
-            )
-        )
-
-
-# =========================================================
-# PAINEL PERSISTENTE
-# =========================================================
 
 class TicketPanelView(discord.ui.View):
-
     def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(TicketSelect())
 
-        super().__init__(
-            timeout=None
-        )
-
-        self.add_item(
-            TicketSelect()
-        )
-
-
-# =========================================================
-# BOTÕES DO TICKET
-# =========================================================
 
 class TicketActionsView(discord.ui.View):
-
     def __init__(self):
-
-        super().__init__(
-            timeout=None
-        )
-
-    # -----------------------------------------------------
-    # ASSUMIR
-    # -----------------------------------------------------
+        super().__init__(timeout=None)
 
     @discord.ui.button(
-        label="Assumir",
-        emoji="🙋",
+        label="Assumir", emoji="🙋",
         style=discord.ButtonStyle.success,
         custom_id="honradinho:ticket_claim"
     )
-    async def assumir(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
+    async def claim(self, interaction: discord.Interaction, button: discord.ui.Button):
+        guild = interaction.guild
+        channel = interaction.channel
+        if not guild or not isinstance(channel, discord.TextChannel):
+            return
 
-        if not interaction.guild:
+        user_id = topic_value(channel.topic, "ticket_user")
+        current_staff = topic_value(channel.topic, "staff")
+        if not user_id:
+            await interaction.response.send_message("❌ Este canal não é um ticket.", ephemeral=True)
+            return
 
+        cfg = get_guild_config(guild.id)
+        staff_role = guild.get_role(cfg["ticket_staff_role_id"]) if cfg["ticket_staff_role_id"] else None
+        member = interaction.user
+
+        authorized = member.guild_permissions.manage_channels or (staff_role and staff_role in member.roles)
+        if not authorized:
+            await interaction.response.send_message("❌ Apenas a Staff pode assumir tickets.", ephemeral=True)
+            return
+
+        if current_staff and current_staff != "0":
+            existing = guild.get_member(int(current_staff))
             await interaction.response.send_message(
-                "❌ Este botão só funciona em servidores.",
+                f"⚠️ Já assumido por {existing.mention if existing else current_staff}.",
                 ephemeral=True
             )
             return
 
-        canal = interaction.channel
-
-        if not isinstance(
-            canal,
-            discord.TextChannel
-        ):
-
-            return
-
-        usuario_id, staff_atual, tipo = (
-            usuario_e_staff_ticket(
-                canal
-            )
+        await channel.edit(
+            topic=update_topic_field(channel.topic, "staff", str(member.id)),
+            reason="Ticket assumido",
         )
-
-        if not usuario_id:
-
-            await interaction.response.send_message(
-                "❌ Este canal não é um ticket válido.",
-                ephemeral=True
-            )
-            return
-
-        config = pegar_config(
-            interaction.guild.id
-        )
-
-        staff_role_id = config[0]
-
-        staff_role = (
-            interaction.guild.get_role(
-                staff_role_id
-            )
-            if staff_role_id
-            else None
-        )
-
-        membro = interaction.user
-
-        autorizado = (
-            membro.guild_permissions.manage_channels
-        )
-
-        if (
-            staff_role
-            and staff_role in membro.roles
-        ):
-            autorizado = True
-
-        if not autorizado:
-
-            await interaction.response.send_message(
-                (
-                    "❌ Apenas membros da Staff "
-                    "podem assumir tickets."
-                ),
-                ephemeral=True
-            )
-            return
-
-        if staff_atual and staff_atual != 0:
-
-            membro_atual = (
-                interaction.guild.get_member(
-                    staff_atual
-                )
-            )
-
-            nome = (
-                membro_atual.mention
-                if membro_atual
-                else f"`{staff_atual}`"
-            )
-
-            await interaction.response.send_message(
-                (
-                    "⚠️ Este ticket já foi "
-                    f"assumido por {nome}."
-                ),
-                ephemeral=True
-            )
-            return
-
-        novo_topic = alterar_staff_topic(
-            canal,
-            interaction.user.id
-        )
-
-        await canal.edit(
-            topic=novo_topic,
-            reason="Ticket assumido"
-        )
-
-        embed = discord.Embed(
-            description=(
-                f"🙋 **Ticket assumido por "
-                f"{interaction.user.mention}**"
-            ),
-            color=discord.Color.green()
-        )
-
-        await interaction.response.send_message(
-            embed=embed
-        )
-
-        log = discord.Embed(
-            title="🙋 Ticket assumido",
-            color=discord.Color.green(),
-            timestamp=discord.utils.utcnow()
-        )
-
-        log.add_field(
-            name="Staff",
-            value=interaction.user.mention
-        )
-
-        log.add_field(
-            name="Ticket",
-            value=canal.mention
-        )
-
-        await enviar_log(
-            interaction.guild,
-            log
-        )
-
-    # -----------------------------------------------------
-    # TRANSCRIPT
-    # -----------------------------------------------------
+        await interaction.response.send_message(f"🙋 Ticket assumido por {member.mention}.")
 
     @discord.ui.button(
-        label="Transcript",
-        emoji="📄",
+        label="Transcript", emoji="📄",
         style=discord.ButtonStyle.secondary,
         custom_id="honradinho:ticket_transcript"
     )
-    async def transcript(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
-
-        canal = interaction.channel
-
-        if not isinstance(
-            canal,
-            discord.TextChannel
-        ):
-
+    async def transcript(self, interaction: discord.Interaction, button: discord.ui.Button):
+        channel = interaction.channel
+        if not isinstance(channel, discord.TextChannel) or not topic_value(channel.topic, "ticket_user"):
+            await interaction.response.send_message("❌ Este canal não é um ticket.", ephemeral=True)
             return
-
-        usuario_id = extrair_dado_topic(
-            canal.topic,
-            "ticket_user"
-        )
-
-        if not usuario_id:
-
-            await interaction.response.send_message(
-                "❌ Este canal não é um ticket.",
-                ephemeral=True
-            )
-            return
-
-        await interaction.response.defer(
-            ephemeral=True
-        )
-
-        arquivo = await gerar_transcript(
-            canal
-        )
-
+        await interaction.response.defer(ephemeral=True)
+        data = await make_transcript(channel)
         await interaction.followup.send(
-            "📄 Transcript gerado:",
-            file=discord.File(
-                arquivo,
-                filename=f"{canal.name}.txt"
-            ),
+            "📄 Transcript:",
+            file=discord.File(data, filename=f"{channel.name}.txt"),
             ephemeral=True
         )
-
-    # -----------------------------------------------------
-    # FECHAR
-    # -----------------------------------------------------
 
     @discord.ui.button(
-        label="Fechar",
-        emoji="🔒",
+        label="Fechar", emoji="🔒",
         style=discord.ButtonStyle.danger,
         custom_id="honradinho:ticket_close"
     )
-    async def fechar(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
-
+    async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
         guild = interaction.guild
-
-        canal = interaction.channel
-
-        if (
-            guild is None
-            or not isinstance(
-                canal,
-                discord.TextChannel
-            )
-        ):
+        channel = interaction.channel
+        if not guild or not isinstance(channel, discord.TextChannel):
             return
 
-        usuario_id, staff_id, tipo = (
-            usuario_e_staff_ticket(
-                canal
-            )
-        )
-
-        if not usuario_id:
-
-            await interaction.response.send_message(
-                "❌ Este canal não é um ticket.",
-                ephemeral=True
-            )
+        user_id = topic_value(channel.topic, "ticket_user")
+        staff_id = topic_value(channel.topic, "staff")
+        ticket_type = topic_value(channel.topic, "tipo")
+        if not user_id:
+            await interaction.response.send_message("❌ Este canal não é um ticket.", ephemeral=True)
             return
 
-        config = pegar_config(
-            guild.id
+        cfg = get_guild_config(guild.id)
+        staff_role = guild.get_role(cfg["ticket_staff_role_id"]) if cfg["ticket_staff_role_id"] else None
+        can_close = (
+            interaction.user.id == int(user_id)
+            or interaction.user.guild_permissions.manage_channels
+            or (staff_role and staff_role in interaction.user.roles)
         )
-
-        staff_role = (
-            guild.get_role(
-                config[0]
-            )
-            if config[0]
-            else None
-        )
-
-        pode_fechar = False
-
-        if interaction.user.id == usuario_id:
-            pode_fechar = True
-
-        if (
-            staff_role
-            and staff_role in interaction.user.roles
-        ):
-            pode_fechar = True
-
-        if interaction.user.guild_permissions.manage_channels:
-            pode_fechar = True
-
-        if not pode_fechar:
-
-            await interaction.response.send_message(
-                (
-                    "❌ Você não possui permissão "
-                    "para fechar este ticket."
-                ),
-                ephemeral=True
-            )
+        if not can_close:
+            await interaction.response.send_message("❌ Você não pode fechar este ticket.", ephemeral=True)
             return
 
-        await interaction.response.send_message(
-            "🔒 Salvando transcript e fechando ticket..."
-        )
+        await interaction.response.send_message("🔒 Salvando transcript e fechando ticket...")
 
-        arquivo = await gerar_transcript(
-            canal
-        )
+        transcript = await make_transcript(channel)
+        data = transcript.getvalue()
 
-        # Precisamos copiar os bytes antes
-        # de enviar em locais diferentes.
-        dados = arquivo.getvalue()
-
-        transcript_logs = io.BytesIO(
-            dados
-        )
-
-        usuario = guild.get_member(
-            usuario_id
-        )
-
-        staff = (
-            guild.get_member(
-                staff_id
-            )
-            if staff_id
-            else None
-        )
+        opener = guild.get_member(int(user_id))
+        staff = guild.get_member(int(staff_id)) if staff_id and staff_id != "0" else None
 
         log = discord.Embed(
             title="🔒 Ticket fechado",
             color=discord.Color.red(),
-            timestamp=discord.utils.utcnow()
+            timestamp=discord.utils.utcnow(),
         )
+        log.add_field(name="Usuário", value=opener.mention if opener else user_id)
+        log.add_field(name="Categoria", value=ticket_type or "Desconhecida")
+        log.add_field(name="Atendido por", value=staff.mention if staff else "Não assumido")
+        log.add_field(name="Fechado por", value=interaction.user.mention, inline=False)
 
-        log.add_field(
-            name="👤 Usuário",
-            value=(
-                usuario.mention
-                if usuario
-                else f"`{usuario_id}`"
-            ),
-            inline=True
-        )
-
-        log.add_field(
-            name="📂 Categoria",
-            value=tipo or "Desconhecida",
-            inline=True
-        )
-
-        log.add_field(
-            name="🙋 Atendido por",
-            value=(
-                staff.mention
-                if staff
-                else "Não assumido"
-            ),
-            inline=True
-        )
-
-        log.add_field(
-            name="🔒 Fechado por",
-            value=interaction.user.mention,
-            inline=False
-        )
-
-        await enviar_log(
+        await send_ticket_log(
             guild,
             log,
-            arquivo=transcript_logs,
-            nome_arquivo=f"{canal.name}.txt"
+            io.BytesIO(data),
+            f"{channel.name}.txt"
         )
 
-        # Tenta enviar transcript por DM
-        if usuario:
-
+        if opener:
             try:
-
-                transcript_dm = io.BytesIO(
-                    dados
-                )
-
-                dm_embed = discord.Embed(
-                    title="🎫 Seu ticket foi fechado",
-                    description=(
-                        f"Servidor: **{guild.name}**\n"
-                        f"Categoria: **{tipo}**\n\n"
-                        "O transcript do atendimento "
-                        "está anexado."
+                await opener.send(
+                    embed=discord.Embed(
+                        title="🎫 Seu ticket foi fechado",
+                        description=f"Servidor: **{guild.name}**\nCategoria: **{ticket_type or 'Desconhecida'}**",
+                        color=discord.Color.blurple(),
                     ),
-                    color=discord.Color.blurple()
+                    file=discord.File(io.BytesIO(data), filename=f"{channel.name}.txt"),
                 )
-
-                await usuario.send(
-                    embed=dm_embed,
-                    file=discord.File(
-                        transcript_dm,
-                        filename=f"{canal.name}.txt"
-                    )
-                )
-
-            except (
-                discord.Forbidden,
-                discord.HTTPException
-            ):
+            except (discord.Forbidden, discord.HTTPException):
                 pass
 
-        await discord.utils.sleep_until(
-            discord.utils.utcnow()
-            + datetime.timedelta(
-                seconds=3
-            )
-        )
-
+        await discord.utils.sleep_until(discord.utils.utcnow() + datetime.timedelta(seconds=3))
         try:
-
-            await canal.delete(
-                reason=(
-                    f"Ticket fechado por "
-                    f"{interaction.user}"
-                )
-            )
-
+            await channel.delete(reason=f"Ticket fechado por {interaction.user}")
         except discord.Forbidden:
-
             pass
 
 
 # =========================================================
-# /TICKET
+# SUGESTÕES
 # =========================================================
 
-@bot.tree.command(
-    name="ticket",
-    description="Envia o painel de tickets."
+class SuggestionView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="Aprovar", emoji="✅", style=discord.ButtonStyle.success, custom_id="honradinho:suggest_approve")
+    async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.user.guild_permissions.manage_messages:
+            await interaction.response.send_message("❌ Apenas moderadores podem aprovar.", ephemeral=True)
+            return
+        embed = interaction.message.embeds[0]
+        embed.color = discord.Color.green()
+        embed.set_footer(text=f"Aprovada por {interaction.user}")
+        await interaction.message.edit(embed=embed, view=self)
+        await interaction.response.send_message("✅ Sugestão aprovada.", ephemeral=True)
+
+    @discord.ui.button(label="Recusar", emoji="❌", style=discord.ButtonStyle.danger, custom_id="honradinho:suggest_reject")
+    async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.user.guild_permissions.manage_messages:
+            await interaction.response.send_message("❌ Apenas moderadores podem recusar.", ephemeral=True)
+            return
+        embed = interaction.message.embeds[0]
+        embed.color = discord.Color.red()
+        embed.set_footer(text=f"Recusada por {interaction.user}")
+        await interaction.message.edit(embed=embed, view=self)
+        await interaction.response.send_message("❌ Sugestão recusada.", ephemeral=True)
+
+
+# =========================================================
+# GRUPOS DE CONFIGURAÇÃO
+# =========================================================
+
+ticket_config_group = app_commands.Group(
+    name="ticket-config",
+    description="Configura o sistema de tickets."
 )
-@app_commands.checks.has_permissions(
-    manage_channels=True
+
+welcome_config_group = app_commands.Group(
+    name="welcome-config",
+    description="Configura boas-vindas, despedida e autorole."
 )
-async def ticket(
-    interaction: discord.Interaction
-):
 
-    if not interaction.guild:
+logs_config_group = app_commands.Group(
+    name="logs-config",
+    description="Configura logs do servidor."
+)
 
-        await interaction.response.send_message(
-            "❌ Este comando só funciona em servidores.",
-            ephemeral=True
-        )
-        return
+suggestions_config_group = app_commands.Group(
+    name="sugestoes-config",
+    description="Configura o sistema de sugestões."
+)
 
-    config = pegar_config(
-        interaction.guild.id
+economy_group = app_commands.Group(
+    name="economia",
+    description="Comandos de economia."
+)
+
+
+# =========================================================
+# CONFIG: TICKETS
+# =========================================================
+
+@ticket_config_group.command(name="staff", description="Define o cargo da Staff.")
+@app_commands.checks.has_permissions(administrator=True)
+async def ticket_staff(interaction: discord.Interaction, cargo: discord.Role):
+    set_guild_config(interaction.guild.id, "ticket_staff_role_id", cargo.id)
+    await interaction.response.send_message(f"✅ Staff: {cargo.mention}", ephemeral=True)
+
+
+@ticket_config_group.command(name="logs", description="Define o canal de logs de tickets.")
+@app_commands.checks.has_permissions(administrator=True)
+async def ticket_logs(interaction: discord.Interaction, canal: discord.TextChannel):
+    set_guild_config(interaction.guild.id, "ticket_logs_channel_id", canal.id)
+    await interaction.response.send_message(f"✅ Logs de tickets: {canal.mention}", ephemeral=True)
+
+
+@ticket_config_group.command(name="categoria", description="Define a categoria dos tickets.")
+@app_commands.checks.has_permissions(administrator=True)
+async def ticket_category(interaction: discord.Interaction, categoria: discord.CategoryChannel):
+    set_guild_config(interaction.guild.id, "ticket_category_id", categoria.id)
+    await interaction.response.send_message(f"✅ Categoria: **{categoria.name}**", ephemeral=True)
+
+
+# =========================================================
+# CONFIG: WELCOME
+# =========================================================
+
+@welcome_config_group.command(name="canal", description="Define o canal de boas-vindas.")
+@app_commands.checks.has_permissions(administrator=True)
+async def welcome_channel(interaction: discord.Interaction, canal: discord.TextChannel):
+    set_guild_config(interaction.guild.id, "welcome_channel_id", canal.id)
+    await interaction.response.send_message(f"✅ Boas-vindas: {canal.mention}", ephemeral=True)
+
+
+@welcome_config_group.command(name="cargo", description="Define o autorole.")
+@app_commands.checks.has_permissions(administrator=True)
+async def welcome_role(interaction: discord.Interaction, cargo: discord.Role):
+    set_guild_config(interaction.guild.id, "autorole_id", cargo.id)
+    await interaction.response.send_message(f"✅ Autorole: {cargo.mention}", ephemeral=True)
+
+
+@welcome_config_group.command(name="mensagem", description="Define a mensagem de boas-vindas.")
+@app_commands.checks.has_permissions(administrator=True)
+async def welcome_message(interaction: discord.Interaction, mensagem: str):
+    set_guild_config(interaction.guild.id, "welcome_message", mensagem)
+    await interaction.response.send_message(
+        "✅ Mensagem salva. Variáveis: `{user}` `{username}` `{server}` `{members}`",
+        ephemeral=True
     )
 
-    if not config[0]:
 
+@welcome_config_group.command(name="despedida-canal", description="Define o canal de despedidas.")
+@app_commands.checks.has_permissions(administrator=True)
+async def goodbye_channel(interaction: discord.Interaction, canal: discord.TextChannel):
+    set_guild_config(interaction.guild.id, "goodbye_channel_id", canal.id)
+    await interaction.response.send_message(f"✅ Despedidas: {canal.mention}", ephemeral=True)
+
+
+@welcome_config_group.command(name="despedida-mensagem", description="Define a mensagem de despedida.")
+@app_commands.checks.has_permissions(administrator=True)
+async def goodbye_message(interaction: discord.Interaction, mensagem: str):
+    set_guild_config(interaction.guild.id, "goodbye_message", mensagem)
+    await interaction.response.send_message("✅ Mensagem de despedida salva.", ephemeral=True)
+
+
+# =========================================================
+# CONFIG: LOGS / SUGESTÕES
+# =========================================================
+
+@logs_config_group.command(name="moderacao", description="Define o canal de logs de moderação.")
+@app_commands.checks.has_permissions(administrator=True)
+async def moderation_logs(interaction: discord.Interaction, canal: discord.TextChannel):
+    set_guild_config(interaction.guild.id, "moderation_logs_channel_id", canal.id)
+    await interaction.response.send_message(f"✅ Logs de moderação: {canal.mention}", ephemeral=True)
+
+
+@suggestions_config_group.command(name="canal", description="Define o canal de sugestões.")
+@app_commands.checks.has_permissions(administrator=True)
+async def suggestions_channel(interaction: discord.Interaction, canal: discord.TextChannel):
+    set_guild_config(interaction.guild.id, "suggestions_channel_id", canal.id)
+    await interaction.response.send_message(f"✅ Sugestões: {canal.mention}", ephemeral=True)
+
+
+# =========================================================
+# COMANDOS: TICKET / INFO
+# =========================================================
+
+@bot.tree.command(name="ticket", description="Envia o painel de tickets.")
+@app_commands.checks.has_permissions(manage_channels=True)
+async def ticket(interaction: discord.Interaction):
+    cfg = get_guild_config(interaction.guild.id)
+    if not cfg["ticket_staff_role_id"]:
         await interaction.response.send_message(
-            (
-                "❌ Configure primeiro o cargo "
-                "da Staff usando:\n"
-                "`/ticket-config staff`"
-            ),
+            "❌ Configure primeiro `/ticket-config staff`.",
             ephemeral=True
         )
         return
 
     embed = discord.Embed(
         title="🎫 Central de Atendimento",
-        description=(
-            "Bem-vindo à central de atendimento "
-            "do **HonraDinho**.\n\n"
-            "Selecione abaixo o motivo do seu ticket."
-        ),
-        color=discord.Color.blurple()
+        description="Selecione abaixo o motivo do seu ticket.",
+        color=discord.Color.blurple(),
     )
+    embed.add_field(name="🆘 Suporte", value="Ajuda e dúvidas.", inline=True)
+    embed.add_field(name="🚨 Denúncia", value="Denúncias e problemas.", inline=True)
+    embed.add_field(name="🛒 Compra", value="Assuntos comerciais.", inline=True)
+    embed.add_field(name="🤝 Parceria", value="Parcerias e propostas.", inline=True)
+    await interaction.response.send_message(embed=embed, view=TicketPanelView())
 
-    embed.add_field(
-        name="🆘 Suporte",
-        value="Ajuda e dúvidas.",
-        inline=True
-    )
 
-    embed.add_field(
-        name="🚨 Denúncia",
-        value="Denúncias e problemas.",
-        inline=True
-    )
-
-    embed.add_field(
-        name="🛒 Compra",
-        value="Assuntos comerciais.",
-        inline=True
-    )
-
-    embed.add_field(
-        name="🤝 Parceria",
-        value="Parcerias e propostas.",
-        inline=True
-    )
-
-    embed.set_footer(
-        text="HonraDinho • Tickets V2"
-    )
-
+@bot.tree.command(name="ping", description="Mostra a latência do HonraDinho.")
+async def ping(interaction: discord.Interaction):
     await interaction.response.send_message(
-        embed=embed,
-        view=TicketPanelView()
+        embed=discord.Embed(
+            title="🏓 Pong!",
+            description=f"Latência: **{round(bot.latency * 1000)}ms**",
+            color=discord.Color.blurple(),
+        )
     )
 
 
-# =========================================================
-# /TICKET-CONFIG
-# =========================================================
+@bot.tree.command(name="botinfo", description="Mostra informações do HonraDinho.")
+async def botinfo(interaction: discord.Interaction):
+    users = sum(g.member_count or 0 for g in bot.guilds)
+    embed = discord.Embed(title="🤖 HonraDinho", color=discord.Color.blurple())
+    embed.add_field(name="Servidores", value=str(len(bot.guilds)))
+    embed.add_field(name="Usuários", value=str(users))
+    embed.add_field(name="Latência", value=f"{round(bot.latency * 1000)}ms")
+    embed.add_field(name="Biblioteca", value=f"discord.py {discord.__version__}", inline=False)
+    await interaction.response.send_message(embed=embed)
 
-ticket_config = app_commands.Group(
-    name="ticket-config",
-    description="Configura o sistema de tickets."
-)
 
-
-@ticket_config.command(
-    name="staff",
-    description="Define o cargo da equipe de atendimento."
-)
-@app_commands.describe(
-    cargo="Cargo responsável pelos tickets."
-)
-@app_commands.checks.has_permissions(
-    administrator=True
-)
-async def ticket_config_staff(
-    interaction: discord.Interaction,
-    cargo: discord.Role
-):
-
-    if not interaction.guild:
+@bot.tree.command(name="server", description="Mostra informações do servidor.")
+async def server(interaction: discord.Interaction):
+    guild = interaction.guild
+    if not guild:
+        await interaction.response.send_message("❌ Use em um servidor.", ephemeral=True)
         return
-
-    definir_staff(
-        interaction.guild.id,
-        cargo.id
-    )
-
-    await interaction.response.send_message(
-        (
-            "✅ Cargo da Staff configurado:\n"
-            f"{cargo.mention}"
-        ),
-        ephemeral=True
-    )
+    embed = discord.Embed(title=f"📊 {guild.name}", color=discord.Color.blurple())
+    if guild.icon:
+        embed.set_thumbnail(url=guild.icon.url)
+    embed.add_field(name="👑 Dono", value=guild.owner.mention if guild.owner else "Desconhecido")
+    embed.add_field(name="👥 Membros", value=str(guild.member_count))
+    embed.add_field(name="💬 Canais", value=str(len(guild.channels)))
+    embed.add_field(name="🎭 Cargos", value=str(len(guild.roles)))
+    embed.add_field(name="🆔 ID", value=str(guild.id))
+    embed.add_field(name="📅 Criado", value=discord.utils.format_dt(guild.created_at, style="D"))
+    await interaction.response.send_message(embed=embed)
 
 
-@ticket_config.command(
-    name="logs",
-    description="Define o canal de logs dos tickets."
-)
-@app_commands.describe(
-    canal="Canal que receberá os logs."
-)
-@app_commands.checks.has_permissions(
-    administrator=True
-)
-async def ticket_config_logs(
-    interaction: discord.Interaction,
-    canal: discord.TextChannel
-):
+@bot.tree.command(name="userinfo", description="Mostra informações de um membro.")
+async def userinfo(interaction: discord.Interaction, membro: Optional[discord.Member] = None):
+    membro = membro or interaction.user
+    embed = discord.Embed(title=f"👤 {membro}", color=discord.Color.blurple())
+    embed.set_thumbnail(url=membro.display_avatar.url)
+    embed.add_field(name="Nome", value=membro.name)
+    embed.add_field(name="ID", value=str(membro.id))
+    embed.add_field(name="Conta criada", value=discord.utils.format_dt(membro.created_at, style="D"), inline=False)
+    if membro.joined_at:
+        embed.add_field(name="Entrou no servidor", value=discord.utils.format_dt(membro.joined_at, style="D"), inline=False)
+    await interaction.response.send_message(embed=embed)
 
-    if not interaction.guild:
+
+@bot.tree.command(name="avatar", description="Mostra o avatar de um usuário.")
+async def avatar(interaction: discord.Interaction, membro: Optional[discord.Member] = None):
+    membro = membro or interaction.user
+    embed = discord.Embed(title=f"🖼️ Avatar de {membro.display_name}", color=discord.Color.blurple())
+    embed.set_image(url=membro.display_avatar.url)
+    await interaction.response.send_message(embed=embed)
+
+
+# =========================================================
+# MODERAÇÃO
+# =========================================================
+
+@bot.tree.command(name="clear", description="Apaga mensagens do canal.")
+@app_commands.checks.has_permissions(manage_messages=True)
+async def clear(interaction: discord.Interaction, quantidade: app_commands.Range[int, 1, 100]):
+    channel = interaction.channel
+    if not isinstance(channel, (discord.TextChannel, discord.Thread)):
+        await interaction.response.send_message("❌ Não funciona aqui.", ephemeral=True)
         return
-
-    definir_logs(
-        interaction.guild.id,
-        canal.id
-    )
-
-    await interaction.response.send_message(
-        (
-            "✅ Canal de logs configurado:\n"
-            f"{canal.mention}"
-        ),
-        ephemeral=True
-    )
+    await interaction.response.defer(ephemeral=True)
+    deleted = await channel.purge(limit=quantidade)
+    await interaction.followup.send(f"🧹 **{len(deleted)} mensagens** apagadas.", ephemeral=True)
 
 
-@ticket_config.command(
-    name="categoria",
-    description="Define a categoria onde os tickets serão criados."
-)
-@app_commands.describe(
-    categoria="Categoria destinada aos tickets."
-)
-@app_commands.checks.has_permissions(
-    administrator=True
-)
-async def ticket_config_categoria(
+@bot.tree.command(name="kick", description="Expulsa um membro.")
+@app_commands.checks.has_permissions(kick_members=True)
+async def kick(interaction: discord.Interaction, membro: discord.Member, motivo: str = "Não informado."):
+    try:
+        await membro.kick(reason=motivo)
+        embed = discord.Embed(title="👢 Membro expulso", color=discord.Color.orange())
+        embed.add_field(name="Usuário", value=str(membro))
+        embed.add_field(name="Moderador", value=interaction.user.mention)
+        embed.add_field(name="Motivo", value=motivo, inline=False)
+        await interaction.response.send_message(embed=embed)
+        await send_mod_log(interaction.guild, embed)
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ Não tenho permissão para expulsar.", ephemeral=True)
+
+
+@bot.tree.command(name="ban", description="Bane um membro.")
+@app_commands.checks.has_permissions(ban_members=True)
+async def ban(interaction: discord.Interaction, membro: discord.Member, motivo: str = "Não informado."):
+    try:
+        await membro.ban(reason=motivo)
+        embed = discord.Embed(title="🔨 Membro banido", color=discord.Color.red())
+        embed.add_field(name="Usuário", value=str(membro))
+        embed.add_field(name="Moderador", value=interaction.user.mention)
+        embed.add_field(name="Motivo", value=motivo, inline=False)
+        await interaction.response.send_message(embed=embed)
+        await send_mod_log(interaction.guild, embed)
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ Não tenho permissão para banir.", ephemeral=True)
+
+
+@bot.tree.command(name="unban", description="Desbane um usuário pelo ID.")
+@app_commands.checks.has_permissions(ban_members=True)
+async def unban(interaction: discord.Interaction, usuario_id: str, motivo: str = "Não informado."):
+    try:
+        user = await bot.fetch_user(int(usuario_id))
+        await interaction.guild.unban(user, reason=motivo)
+        await interaction.response.send_message(f"🔓 **{user}** foi desbanido.")
+    except (ValueError, discord.NotFound):
+        await interaction.response.send_message("❌ Usuário/ID não encontrado.", ephemeral=True)
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ Não tenho permissão para desbanir.", ephemeral=True)
+
+
+@bot.tree.command(name="timeout", description="Aplica timeout em um membro.")
+@app_commands.checks.has_permissions(moderate_members=True)
+async def timeout(
     interaction: discord.Interaction,
-    categoria: discord.CategoryChannel
+    membro: discord.Member,
+    minutos: app_commands.Range[int, 1, 40320],
+    motivo: str = "Não informado."
 ):
+    until = discord.utils.utcnow() + datetime.timedelta(minutes=minutos)
+    try:
+        await membro.timeout(until, reason=motivo)
+        await interaction.response.send_message(
+            f"🔇 {membro.mention} recebeu timeout por **{minutos} minuto(s)**."
+        )
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ Não consigo aplicar timeout nesse membro.", ephemeral=True)
 
-    if not interaction.guild:
-        return
 
-    definir_categoria(
-        interaction.guild.id,
-        categoria.id
-    )
+@bot.tree.command(name="untimeout", description="Remove o timeout de um membro.")
+@app_commands.checks.has_permissions(moderate_members=True)
+async def untimeout(interaction: discord.Interaction, membro: discord.Member):
+    try:
+        await membro.timeout(None, reason=f"Timeout removido por {interaction.user}")
+        await interaction.response.send_message(f"🔊 Timeout de {membro.mention} removido.")
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ Não consigo remover o timeout.", ephemeral=True)
 
-    await interaction.response.send_message(
+
+@bot.tree.command(name="warn", description="Adiciona um aviso a um membro.")
+@app_commands.checks.has_permissions(moderate_members=True)
+async def warn(interaction: discord.Interaction, membro: discord.Member, motivo: str):
+    cur.execute(
+        "INSERT INTO warnings (guild_id, user_id, moderator_id, reason, created_at) VALUES (?, ?, ?, ?, ?)",
         (
-            "✅ Categoria dos tickets configurada:\n"
-            f"**{categoria.name}**"
+            interaction.guild.id,
+            membro.id,
+            interaction.user.id,
+            motivo,
+            discord.utils.utcnow().isoformat(),
         ),
-        ephemeral=True
+    )
+    db.commit()
+    await interaction.response.send_message(f"⚠️ {membro.mention} recebeu um aviso: **{motivo}**")
+
+
+@bot.tree.command(name="warnings", description="Mostra os avisos de um membro.")
+@app_commands.checks.has_permissions(moderate_members=True)
+async def warnings(interaction: discord.Interaction, membro: discord.Member):
+    cur.execute(
+        "SELECT * FROM warnings WHERE guild_id = ? AND user_id = ? ORDER BY id DESC LIMIT 10",
+        (interaction.guild.id, membro.id),
+    )
+    rows = cur.fetchall()
+    if not rows:
+        await interaction.response.send_message("✅ Esse membro não possui avisos.", ephemeral=True)
+        return
+    text = "\n".join(
+        f"`#{r['id']}` • {r['reason']} • moderador <@{r['moderator_id']}>"
+        for r in rows
+    )
+    await interaction.response.send_message(
+        embed=discord.Embed(title=f"⚠️ Avisos de {membro}", description=text, color=discord.Color.orange())
     )
 
 
 # =========================================================
-# /PING
+# NÍVEIS
 # =========================================================
 
-@bot.tree.command(
-    name="ping",
-    description="Mostra a latência do HonraDinho."
-)
-async def ping(
-    interaction: discord.Interaction
-):
+@bot.tree.command(name="rank", description="Mostra seu nível e XP.")
+async def rank(interaction: discord.Interaction, membro: Optional[discord.Member] = None):
+    membro = membro or interaction.user
+    stats = get_user_stats(interaction.guild.id, membro.id)
+    needed = (stats["level"] + 1) * 100
+    embed = discord.Embed(title=f"🏆 Rank de {membro.display_name}", color=discord.Color.blurple())
+    embed.add_field(name="Nível", value=str(stats["level"]))
+    embed.add_field(name="XP", value=f"{stats['xp']}/{needed}")
+    embed.set_thumbnail(url=membro.display_avatar.url)
+    await interaction.response.send_message(embed=embed)
 
-    latencia = round(
-        bot.latency * 1000
+
+@bot.tree.command(name="leaderboard", description="Mostra o ranking de níveis.")
+async def leaderboard(interaction: discord.Interaction):
+    cur.execute(
+        "SELECT user_id, level, xp FROM user_stats WHERE guild_id = ? ORDER BY level DESC, xp DESC LIMIT 10",
+        (interaction.guild.id,),
     )
+    rows = cur.fetchall()
+    if not rows:
+        await interaction.response.send_message("Ainda não há ranking.", ephemeral=True)
+        return
+    lines = []
+    for i, row in enumerate(rows, 1):
+        member = interaction.guild.get_member(row["user_id"])
+        name = member.display_name if member else str(row["user_id"])
+        lines.append(f"**{i}.** {name} — nível **{row['level']}** ({row['xp']} XP)")
+    await interaction.response.send_message(
+        embed=discord.Embed(title="🏆 Leaderboard", description="\n".join(lines), color=discord.Color.gold())
+    )
+
+
+# =========================================================
+# ECONOMIA
+# =========================================================
+
+@economy_group.command(name="saldo", description="Mostra seu saldo.")
+async def balance(interaction: discord.Interaction, membro: Optional[discord.Member] = None):
+    membro = membro or interaction.user
+    stats = get_user_stats(interaction.guild.id, membro.id)
+    await interaction.response.send_message(f"💰 {membro.mention} possui **{stats['balance']} moedas**.")
+
+
+@economy_group.command(name="daily", description="Recebe sua recompensa diária.")
+async def daily(interaction: discord.Interaction):
+    stats = get_user_stats(interaction.guild.id, interaction.user.id)
+    today = datetime.date.today().isoformat()
+    if stats["last_daily"] == today:
+        await interaction.response.send_message("⏳ Você já recebeu sua recompensa de hoje.", ephemeral=True)
+        return
+    amount = random.randint(100, 250)
+    cur.execute(
+        "UPDATE user_stats SET balance = balance + ?, last_daily = ? WHERE guild_id = ? AND user_id = ?",
+        (amount, today, interaction.guild.id, interaction.user.id),
+    )
+    db.commit()
+    await interaction.response.send_message(f"🎁 Você recebeu **{amount} moedas**!")
+
+
+@economy_group.command(name="pagar", description="Transfere moedas para outro membro.")
+async def pay(interaction: discord.Interaction, membro: discord.Member, quantidade: app_commands.Range[int, 1, 1000000]):
+    if membro.bot or membro.id == interaction.user.id:
+        await interaction.response.send_message("❌ Destinatário inválido.", ephemeral=True)
+        return
+    sender = get_user_stats(interaction.guild.id, interaction.user.id)
+    if sender["balance"] < quantidade:
+        await interaction.response.send_message("❌ Saldo insuficiente.", ephemeral=True)
+        return
+    ensure_user(interaction.guild.id, membro.id)
+    cur.execute(
+        "UPDATE user_stats SET balance = balance - ? WHERE guild_id = ? AND user_id = ?",
+        (quantidade, interaction.guild.id, interaction.user.id),
+    )
+    cur.execute(
+        "UPDATE user_stats SET balance = balance + ? WHERE guild_id = ? AND user_id = ?",
+        (quantidade, interaction.guild.id, membro.id),
+    )
+    db.commit()
+    await interaction.response.send_message(f"💸 Você enviou **{quantidade} moedas** para {membro.mention}.")
+
+
+# =========================================================
+# SUGESTÕES / ENQUETES
+# =========================================================
+
+@bot.tree.command(name="sugerir", description="Envia uma sugestão.")
+async def suggest(interaction: discord.Interaction, sugestao: str):
+    cfg = get_guild_config(interaction.guild.id)
+    channel = interaction.guild.get_channel(cfg["suggestions_channel_id"]) if cfg["suggestions_channel_id"] else None
+    if not isinstance(channel, discord.TextChannel):
+        await interaction.response.send_message("❌ O canal de sugestões não foi configurado.", ephemeral=True)
+        return
 
     embed = discord.Embed(
-        title="🏓 Pong!",
-        description=(
-            f"Latência: **{latencia}ms**"
-        ),
-        color=discord.Color.blurple()
+        title="💡 Nova sugestão",
+        description=sugestao,
+        color=discord.Color.blurple(),
+        timestamp=discord.utils.utcnow(),
     )
+    embed.set_author(name=str(interaction.user), icon_url=interaction.user.display_avatar.url)
+    msg = await channel.send(embed=embed, view=SuggestionView())
+    await msg.add_reaction("👍")
+    await msg.add_reaction("👎")
+    await interaction.response.send_message(f"✅ Sugestão enviada em {channel.mention}.", ephemeral=True)
 
-    await interaction.response.send_message(
-        embed=embed
-    )
 
-
-# =========================================================
-# /AJUDA
-# =========================================================
-
-@bot.tree.command(
-    name="ajuda",
-    description="Mostra os comandos disponíveis."
-)
-async def ajuda(
-    interaction: discord.Interaction
+@bot.tree.command(name="enquete", description="Cria uma enquete simples.")
+@app_commands.checks.has_permissions(manage_messages=True)
+async def poll(
+    interaction: discord.Interaction,
+    pergunta: str,
+    opcao1: str,
+    opcao2: str,
+    opcao3: Optional[str] = None,
+    opcao4: Optional[str] = None,
 ):
+    options = [opcao1, opcao2]
+    if opcao3:
+        options.append(opcao3)
+    if opcao4:
+        options.append(opcao4)
+
+    emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣"]
+    description = "\n".join(f"{emojis[i]} {opt}" for i, opt in enumerate(options))
 
     embed = discord.Embed(
-        title="🤖 HonraDinho — Ajuda",
-        description=(
-            "Veja os comandos disponíveis abaixo."
-        ),
-        color=discord.Color.blurple()
+        title=f"📊 {pergunta}",
+        description=description,
+        color=discord.Color.blurple(),
+        timestamp=discord.utils.utcnow(),
     )
+    embed.set_footer(text=f"Enquete criada por {interaction.user}")
+    await interaction.response.send_message(embed=embed)
+    msg = await interaction.original_response()
+    for i in range(len(options)):
+        await msg.add_reaction(emojis[i])
 
+
+# =========================================================
+# AJUDA
+# =========================================================
+
+@bot.tree.command(name="ajuda", description="Mostra os comandos do HonraDinho.")
+async def help_cmd(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="🤖 HonraDinho — Central de Ajuda",
+        description="Principais comandos disponíveis:",
+        color=discord.Color.blurple(),
+    )
     embed.add_field(
         name="📊 Informações",
-        value=(
-            "`/ping`\n"
-            "`/server`\n"
-            "`/userinfo`\n"
-            "`/avatar`"
-        ),
-        inline=True
+        value="`/ping` `/botinfo` `/server` `/userinfo` `/avatar`",
+        inline=False,
     )
-
     embed.add_field(
         name="🛡️ Moderação",
-        value=(
-            "`/clear`\n"
-            "`/kick`\n"
-            "`/ban`"
-        ),
-        inline=True
+        value="`/clear` `/kick` `/ban` `/unban` `/timeout` `/untimeout` `/warn` `/warnings`",
+        inline=False,
     )
-
     embed.add_field(
         name="🎫 Tickets",
-        value=(
-            "`/ticket`\n"
-            "`/ticket-config staff`\n"
-            "`/ticket-config logs`\n"
-            "`/ticket-config categoria`"
-        ),
-        inline=False
+        value="`/ticket` + `/ticket-config ...`",
+        inline=False,
     )
-
-    embed.set_footer(
-        text="HonraDinho • Seu servidor, suas regras."
-    )
-
-    await interaction.response.send_message(
-        embed=embed
-    )
-
-
-# =========================================================
-# /SERVER
-# =========================================================
-
-@bot.tree.command(
-    name="server",
-    description="Mostra informações do servidor."
-)
-async def server(
-    interaction: discord.Interaction
-):
-
-    guild = interaction.guild
-
-    if guild is None:
-
-        await interaction.response.send_message(
-            "❌ Use este comando em um servidor.",
-            ephemeral=True
-        )
-        return
-
-    embed = discord.Embed(
-        title=f"📊 {guild.name}",
-        color=discord.Color.blurple()
-    )
-
-    if guild.icon:
-
-        embed.set_thumbnail(
-            url=guild.icon.url
-        )
-
     embed.add_field(
-        name="👑 Dono",
-        value=(
-            guild.owner.mention
-            if guild.owner
-            else "Desconhecido"
-        )
+        name="👋 Comunidade",
+        value="`/welcome-config ...` `/logs-config moderacao` `/sugestoes-config canal`",
+        inline=False,
     )
-
     embed.add_field(
-        name="👥 Membros",
-        value=str(guild.member_count)
+        name="🏆 Níveis",
+        value="`/rank` `/leaderboard`",
+        inline=False,
     )
-
     embed.add_field(
-        name="💬 Canais",
-        value=str(len(guild.channels))
+        name="💰 Economia",
+        value="`/economia saldo` `/economia daily` `/economia pagar`",
+        inline=False,
     )
-
     embed.add_field(
-        name="🎭 Cargos",
-        value=str(len(guild.roles))
+        name="💡 Interação",
+        value="`/sugerir` `/enquete`",
+        inline=False,
     )
-
-    embed.add_field(
-        name="🆔 ID",
-        value=str(guild.id)
-    )
-
-    embed.add_field(
-        name="📅 Criado",
-        value=discord.utils.format_dt(
-            guild.created_at,
-            style="D"
-        )
-    )
-
-    await interaction.response.send_message(
-        embed=embed
-    )
+    await interaction.response.send_message(embed=embed)
 
 
 # =========================================================
-# /USERINFO
-# =========================================================
-
-@bot.tree.command(
-    name="userinfo",
-    description="Mostra informações de um membro."
-)
-@app_commands.describe(
-    membro="Membro que deseja consultar."
-)
-async def userinfo(
-    interaction: discord.Interaction,
-    membro: discord.Member | None = None
-):
-
-    membro = membro or interaction.user
-
-    embed = discord.Embed(
-        title=f"👤 {membro}",
-        color=discord.Color.blurple()
-    )
-
-    embed.set_thumbnail(
-        url=membro.display_avatar.url
-    )
-
-    embed.add_field(
-        name="Nome",
-        value=membro.name
-    )
-
-    embed.add_field(
-        name="ID",
-        value=str(membro.id)
-    )
-
-    embed.add_field(
-        name="Conta criada",
-        value=discord.utils.format_dt(
-            membro.created_at,
-            style="D"
-        ),
-        inline=False
-    )
-
-    if membro.joined_at:
-
-        embed.add_field(
-            name="Entrou no servidor",
-            value=discord.utils.format_dt(
-                membro.joined_at,
-                style="D"
-            ),
-            inline=False
-        )
-
-    await interaction.response.send_message(
-        embed=embed
-    )
-
-
-# =========================================================
-# /AVATAR
-# =========================================================
-
-@bot.tree.command(
-    name="avatar",
-    description="Mostra o avatar de um usuário."
-)
-@app_commands.describe(
-    membro="Usuário que deseja consultar."
-)
-async def avatar(
-    interaction: discord.Interaction,
-    membro: discord.Member | None = None
-):
-
-    membro = membro or interaction.user
-
-    embed = discord.Embed(
-        title=(
-            f"🖼️ Avatar de "
-            f"{membro.display_name}"
-        ),
-        color=discord.Color.blurple()
-    )
-
-    embed.set_image(
-        url=membro.display_avatar.url
-    )
-
-    await interaction.response.send_message(
-        embed=embed
-    )
-
-
-# =========================================================
-# /CLEAR
-# =========================================================
-
-@bot.tree.command(
-    name="clear",
-    description="Apaga mensagens do canal."
-)
-@app_commands.describe(
-    quantidade="Quantidade entre 1 e 100."
-)
-@app_commands.checks.has_permissions(
-    manage_messages=True
-)
-async def clear(
-    interaction: discord.Interaction,
-    quantidade: app_commands.Range[int, 1, 100]
-):
-
-    canal = interaction.channel
-
-    if not isinstance(
-        canal,
-        (
-            discord.TextChannel,
-            discord.Thread
-        )
-    ):
-
-        await interaction.response.send_message(
-            "❌ Este comando não funciona aqui.",
-            ephemeral=True
-        )
-        return
-
-    await interaction.response.defer(
-        ephemeral=True
-    )
-
-    mensagens = await canal.purge(
-        limit=quantidade
-    )
-
-    await interaction.followup.send(
-        (
-            f"🧹 **{len(mensagens)} mensagens** "
-            "apagadas."
-        ),
-        ephemeral=True
-    )
-
-
-# =========================================================
-# /KICK
-# =========================================================
-
-@bot.tree.command(
-    name="kick",
-    description="Expulsa um membro."
-)
-@app_commands.describe(
-    membro="Membro que será expulso.",
-    motivo="Motivo."
-)
-@app_commands.checks.has_permissions(
-    kick_members=True
-)
-async def kick(
-    interaction: discord.Interaction,
-    membro: discord.Member,
-    motivo: str = "Não informado."
-):
-
-    if interaction.guild is None:
-        return
-
-    if membro == interaction.user:
-
-        await interaction.response.send_message(
-            "❌ Você não pode expulsar a si mesmo.",
-            ephemeral=True
-        )
-        return
-
-    if membro == interaction.guild.owner:
-
-        await interaction.response.send_message(
-            "❌ O dono não pode ser expulso.",
-            ephemeral=True
-        )
-        return
-
-    try:
-
-        await membro.kick(
-            reason=motivo
-        )
-
-        embed = discord.Embed(
-            title="👢 Membro expulso",
-            color=discord.Color.orange()
-        )
-
-        embed.add_field(
-            name="Usuário",
-            value=str(membro)
-        )
-
-        embed.add_field(
-            name="Moderador",
-            value=interaction.user.mention
-        )
-
-        embed.add_field(
-            name="Motivo",
-            value=motivo,
-            inline=False
-        )
-
-        await interaction.response.send_message(
-            embed=embed
-        )
-
-    except discord.Forbidden:
-
-        await interaction.response.send_message(
-            "❌ Não tenho permissão para expulsá-lo.",
-            ephemeral=True
-        )
-
-
-# =========================================================
-# /BAN
-# =========================================================
-
-@bot.tree.command(
-    name="ban",
-    description="Bane um membro."
-)
-@app_commands.describe(
-    membro="Membro que será banido.",
-    motivo="Motivo."
-)
-@app_commands.checks.has_permissions(
-    ban_members=True
-)
-async def ban(
-    interaction: discord.Interaction,
-    membro: discord.Member,
-    motivo: str = "Não informado."
-):
-
-    if interaction.guild is None:
-        return
-
-    if membro == interaction.user:
-
-        await interaction.response.send_message(
-            "❌ Você não pode banir a si mesmo.",
-            ephemeral=True
-        )
-        return
-
-    if membro == interaction.guild.owner:
-
-        await interaction.response.send_message(
-            "❌ O dono não pode ser banido.",
-            ephemeral=True
-        )
-        return
-
-    try:
-
-        await membro.ban(
-            reason=motivo
-        )
-
-        embed = discord.Embed(
-            title="🔨 Membro banido",
-            color=discord.Color.red()
-        )
-
-        embed.add_field(
-            name="Usuário",
-            value=str(membro)
-        )
-
-        embed.add_field(
-            name="Moderador",
-            value=interaction.user.mention
-        )
-
-        embed.add_field(
-            name="Motivo",
-            value=motivo,
-            inline=False
-        )
-
-        await interaction.response.send_message(
-            embed=embed
-        )
-
-    except discord.Forbidden:
-
-        await interaction.response.send_message(
-            "❌ Não tenho permissão para bani-lo.",
-            ephemeral=True
-        )
-
-
-# =========================================================
-# ERRO GLOBAL DE COMANDOS
+# ERROS GLOBAIS
 # =========================================================
 
 @bot.tree.error
-async def erro_comando(
-    interaction: discord.Interaction,
-    error: app_commands.AppCommandError
-):
-
-    if isinstance(
-        error,
-        app_commands.MissingPermissions
-    ):
-
-        mensagem = (
-            "❌ Você não possui as permissões "
-            "necessárias para usar este comando."
-        )
-
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.MissingPermissions):
+        message = "❌ Você não possui as permissões necessárias."
     else:
-
-        print(
-            f"Erro em comando: {error}"
-        )
-
-        mensagem = (
-            "❌ Ocorreu um erro ao executar "
-            "este comando."
-        )
+        print(f"Erro em comando: {repr(error)}")
+        message = "❌ Ocorreu um erro ao executar este comando."
 
     try:
-
         if interaction.response.is_done():
-
-            await interaction.followup.send(
-                mensagem,
-                ephemeral=True
-            )
-
+            await interaction.followup.send(message, ephemeral=True)
         else:
-
-            await interaction.response.send_message(
-                mensagem,
-                ephemeral=True
-            )
-
+            await interaction.response.send_message(message, ephemeral=True)
     except discord.HTTPException:
         pass
 
@@ -1923,17 +1232,9 @@ async def erro_comando(
 # TOKEN
 # =========================================================
 
-TOKEN = os.getenv(
-    "DISCORD_TOKEN"
-)
+TOKEN = os.getenv("DISCORD_TOKEN")
 
 if not TOKEN:
+    raise RuntimeError("A variável DISCORD_TOKEN não foi configurada.")
 
-    raise RuntimeError(
-        "A variável DISCORD_TOKEN não foi configurada."
-    )
-
-
-bot.run(
-    TOKEN
-)
+bot.run(TOKEN)
