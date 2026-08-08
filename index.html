@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>HonraDinho — Seu bot para Discord</title>
+
+    <meta name="description" content="HonraDinho é um bot completo para deixar seu servidor Discord mais organizado, divertido e seguro.">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: #08080d;
+            color: white;
+            line-height: 1.6;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            background: rgba(8, 8, 13, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        nav {
+            max-width: 1100px;
+            margin: auto;
+            padding: 18px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -1px;
+        }
+
+        .logo span {
+            color: #5865F2;
+        }
+
+        nav a {
+            color: #bbb;
+            text-decoration: none;
+            margin-left: 25px;
+            transition: 0.3s;
+        }
+
+        nav a:hover {
+            color: white;
+        }
+
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 120px 20px 80px;
+            background:
+                radial-gradient(circle at top, rgba(88,101,242,0.25), transparent 40%),
+                #08080d;
+        }
+
+        .hero-content {
+            max-width: 800px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 30px;
+            background: rgba(88,101,242,0.12);
+            border: 1px solid rgba(88,101,242,0.35);
+            color: #8f99ff;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+
+        h1 {
+            font-size: clamp(45px, 8vw, 80px);
+            line-height: 1;
+            margin-bottom: 25px;
+        }
+
+        h1 span {
+            color: #5865F2;
+        }
+
+        .hero p {
+            color: #aaa;
+            font-size: 19px;
+            max-width: 650px;
+            margin: auto;
+        }
+
+        .buttons {
+            margin-top: 35px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .button {
+            text-decoration: none;
+            padding: 14px 25px;
+            border-radius: 10px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .primary {
+            background: #5865F2;
+            color: white;
+        }
+
+        .primary:hover {
+            transform: translateY(-3px);
+            background: #4752c4;
+        }
+
+        .secondary {
+            border: 1px solid #333;
+            color: white;
+            background: #111118;
+        }
+
+        .secondary:hover {
+            transform: translateY(-3px);
+            background: #181820;
+        }
+
+        section {
+            max-width: 1100px;
+            margin: auto;
+            padding: 100px 25px;
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .section-title h2 {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .section-title p {
+            color: #999;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .card {
+            background: #101017;
+            border: 1px solid #22222c;
+            border-radius: 15px;
+            padding: 30px;
+            transition: 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: #5865F2;
+        }
+
+        .icon {
+            font-size: 35px;
+            margin-bottom: 15px;
+        }
+
+        .card h3 {
+            margin-bottom: 10px;
+        }
+
+        .card p {
+            color: #999;
+        }
+
+        .cta {
+            text-align: center;
+            background: linear-gradient(
+                135deg,
+                rgba(88,101,242,0.18),
+                rgba(120,70,255,0.08)
+            );
+            border: 1px solid rgba(88,101,242,0.25);
+            border-radius: 20px;
+            padding: 70px 25px;
+        }
+
+        .cta h2 {
+            font-size: 40px;
+            margin-bottom: 15px;
+        }
+
+        .cta p {
+            color: #aaa;
+            margin-bottom: 30px;
+        }
+
+        footer {
+            border-top: 1px solid #20202a;
+            padding: 35px 20px;
+            text-align: center;
+            color: #777;
+        }
+
+        footer a {
+            color: #999;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+
+        footer a:hover {
+            color: white;
+        }
+
+        @media (max-width: 750px) {
+            nav a {
+                display: none;
+            }
+
+            .cards {
+                grid-template-columns: 1fr;
+            }
+
+            .hero p {
+                font-size: 16px;
+            }
+
+            .section-title h2,
+            .cta h2 {
+                font-size: 32px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <nav>
+        <div class="logo">Honra<span>Dinho</span></div>
+
+        <div>
+            <a href="#inicio">Início</a>
+            <a href="#recursos">Recursos</a>
+            <a href="#sobre">Sobre</a>
+        </div>
+    </nav>
+</header>
+
+<main>
+
+    <section class="hero" id="inicio">
+        <div class="hero-content">
+
+            <div class="badge">
+                🤖 BOT PARA DISCORD
+            </div>
+
+            <h1>
+                Conheça o <span>HonraDinho</span>
+            </h1>
+
+            <p>
+                Um bot criado para deixar seu servidor Discord
+                mais organizado, divertido e completo.
+            </p>
+
+            <div class="buttons">
+                <a href="#" class="button primary">
+                    🚀 Adicionar ao Discord
+                </a>
+
+                <a href="#recursos" class="button secondary">
+                    Ver recursos
+                </a>
+            </div>
+
+        </div>
+    </section>
+
+
+    <section id="recursos">
+
+        <div class="section-title">
+            <h2>O que o HonraDinho oferece?</h2>
+            <p>Ferramentas para deixar seu servidor ainda melhor.</p>
+        </div>
+
+        <div class="cards">
+
+            <div class="card">
+                <div class="icon">🛡️</div>
+                <h3>Moderação</h3>
+                <p>
+                    Recursos para ajudar na organização,
+                    segurança e moderação do seu servidor.
+                </p>
+            </div>
+
+            <div class="card">
+                <div class="icon">🎮</div>
+                <h3>Diversão</h3>
+                <p>
+                    Comandos e funcionalidades para
+                    tornar seu servidor mais divertido.
+                </p>
+            </div>
+
+            <div class="card">
+                <div class="icon">⚙️</div>
+                <h3>Sistemas</h3>
+                <p>
+                    Sistemas completos para melhorar
+                    a experiência dos membros.
+                </p>
+            </div>
+
+            <div class="card">
+                <div class="icon">🎫</div>
+                <h3>Tickets</h3>
+                <p>
+                    Sistema de atendimento para organizar
+                    o suporte dentro do Discord.
+                </p>
+            </div>
+
+            <div class="card">
+                <div class="icon">📊</div>
+                <h3>Informações</h3>
+                <p>
+                    Comandos informativos e ferramentas
+                    úteis para sua comunidade.
+                </p>
+            </div>
+
+            <div class="card">
+                <div class="icon">✨</div>
+                <h3>Personalização</h3>
+                <p>
+                    Configure o HonraDinho de acordo
+                    com as necessidades do seu servidor.
+                </p>
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <section id="sobre">
+
+        <div class="cta">
+
+            <h2>Pronto para conhecer o HonraDinho?</h2>
+
+            <p>
+                Adicione o bot ao seu servidor e aproveite
+                todos os recursos.
+            </p>
+
+            <a href="#" class="button primary">
+                🚀 Adicionar HonraDinho
+            </a>
+
+        </div>
+
+    </section>
+
+</main>
+
+
+<footer>
+
+    <p>© 2026 HonraDinho. Todos os direitos reservados.</p>
+
+    <br>
+
+    <a href="terms.html">Termos de Serviço</a>
+
+    <a href="privacy.html">Política de Privacidade</a>
+
+</footer>
+
+</body>
+</html>
