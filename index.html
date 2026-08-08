@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>HonraDinho — Discord Bot</title>
-
-    <meta name="description" content="HonraDinho — um bot completo para seu servidor Discord.">
+    <meta name="description" content="HonraDinho — moderação, diversão e sistemas para seu servidor Discord.">
 
     <style>
         * {
@@ -27,23 +26,21 @@
         }
 
         a {
-            text-decoration: none;
             color: inherit;
+            text-decoration: none;
         }
-
-        /* FUNDO */
 
         body::before {
             content: "";
             position: fixed;
-            width: 650px;
-            height: 650px;
-            top: -300px;
+            width: 700px;
+            height: 700px;
+            top: -350px;
             left: 50%;
             transform: translateX(-50%);
             background: #5865f2;
-            opacity: 0.14;
-            filter: blur(150px);
+            opacity: .14;
+            filter: blur(160px);
             border-radius: 50%;
             pointer-events: none;
             z-index: -1;
@@ -57,9 +54,9 @@
             left: 0;
             width: 100%;
             z-index: 1000;
-            background: rgba(7, 7, 13, 0.82);
+            background: rgba(7, 7, 13, .82);
             backdrop-filter: blur(18px);
-            border-bottom: 1px solid rgba(255,255,255,0.08);
+            border-bottom: 1px solid rgba(255,255,255,.08);
         }
 
         nav {
@@ -67,7 +64,6 @@
             height: 72px;
             margin: auto;
             padding: 0 25px;
-
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -85,24 +81,24 @@
         .nav-links {
             display: flex;
             align-items: center;
-            gap: 28px;
+            gap: 27px;
         }
 
         .nav-links a {
             color: #a6a6b0;
             font-size: 14px;
-            transition: 0.2s;
+            transition: .2s;
         }
 
         .nav-links a:hover {
-            color: white;
+            color: #fff;
         }
 
         .nav-add {
-            background: #5865f2;
-            color: white !important;
             padding: 10px 17px;
             border-radius: 9px;
+            background: #5865f2;
+            color: white !important;
             font-weight: bold;
         }
 
@@ -115,8 +111,7 @@
 
         .hero {
             min-height: 100vh;
-            padding: 150px 25px 90px;
-
+            padding: 145px 25px 90px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -124,26 +119,25 @@
         }
 
         .hero-content {
-            max-width: 850px;
+            max-width: 900px;
         }
 
         .badge {
             display: inline-block;
             padding: 8px 16px;
             margin-bottom: 25px;
-
             border-radius: 50px;
-            border: 1px solid rgba(88,101,242,0.4);
-            background: rgba(88,101,242,0.12);
-
+            border: 1px solid rgba(88,101,242,.4);
+            background: rgba(88,101,242,.1);
             color: #9da5ff;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: bold;
+            letter-spacing: 1px;
         }
 
         .hero h1 {
-            font-size: clamp(48px, 9vw, 90px);
-            line-height: 0.95;
+            font-size: clamp(50px, 9vw, 90px);
+            line-height: .95;
             letter-spacing: -5px;
             margin-bottom: 28px;
         }
@@ -153,96 +147,89 @@
         }
 
         .hero p {
-            max-width: 650px;
+            max-width: 670px;
             margin: auto;
-
             color: #9696a2;
             font-size: 18px;
             line-height: 1.7;
         }
 
         .buttons {
+            margin-top: 35px;
             display: flex;
             justify-content: center;
             flex-wrap: wrap;
             gap: 14px;
-            margin-top: 35px;
         }
 
         .btn {
             display: inline-flex;
-            justify-content: center;
             align-items: center;
+            justify-content: center;
             gap: 8px;
-
             padding: 15px 24px;
             border-radius: 11px;
-
             font-size: 15px;
             font-weight: bold;
-
-            transition: 0.25s;
-            cursor: pointer;
+            transition: .25s;
         }
 
-        .btn-primary {
+        .primary {
             background: #5865f2;
             color: white;
-            box-shadow: 0 10px 35px rgba(88,101,242,0.25);
+            box-shadow: 0 10px 35px rgba(88,101,242,.25);
         }
 
-        .btn-primary:hover {
+        .primary:hover {
             background: #4752c4;
             transform: translateY(-4px);
         }
 
-        .btn-secondary {
+        .secondary {
             background: #111118;
-            border: 1px solid #272732;
+            border: 1px solid #292934;
             color: #ddd;
         }
 
-        .btn-secondary:hover {
+        .secondary:hover {
             background: #181820;
             transform: translateY(-4px);
         }
 
-        /* STATS */
+        /* STATUS */
 
         .stats {
             max-width: 1000px;
-            margin: -20px auto 0;
+            margin: -30px auto 0;
             padding: 0 25px;
-
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 15px;
         }
 
         .stat {
-            padding: 25px;
+            padding: 27px;
             text-align: center;
-
             background: #101017;
-            border: 1px solid #24242e;
+            border: 1px solid #24242f;
             border-radius: 15px;
         }
 
-        .stat-number {
-            color: #5865f2;
-            font-size: 30px;
-            font-weight: 900;
+        .stat strong {
+            display: block;
+            color: #8f99ff;
+            font-size: 28px;
+            margin-bottom: 5px;
         }
 
-        .stat-text {
+        .stat span {
             color: #858591;
             font-size: 13px;
-            margin-top: 5px;
         }
 
         /* SEÇÕES */
 
-        section {
+        section.content {
             max-width: 1150px;
             margin: auto;
             padding: 120px 25px;
@@ -256,10 +243,9 @@
 
         .section-title small {
             color: #5865f2;
-            text-transform: uppercase;
-            font-size: 12px;
             font-weight: bold;
             letter-spacing: 2px;
+            text-transform: uppercase;
         }
 
         .section-title h2 {
@@ -282,12 +268,10 @@
 
         .feature {
             padding: 30px;
-
             background: #101017;
-            border: 1px solid #24242e;
+            border: 1px solid #24242f;
             border-radius: 17px;
-
-            transition: 0.3s;
+            transition: .3s;
         }
 
         .feature:hover {
@@ -298,22 +282,17 @@
         .feature-icon {
             width: 50px;
             height: 50px;
-
-            display: flex;
-            justify-content: center;
-            align-items: center;
-
             margin-bottom: 20px;
-
+            display: flex;
+            align-items: center;
+            justify-content: center;
             border-radius: 13px;
-            background: rgba(88,101,242,0.12);
-
+            background: rgba(88,101,242,.12);
             font-size: 23px;
         }
 
         .feature h3 {
             margin-bottom: 10px;
-            font-size: 19px;
         }
 
         .feature p {
@@ -324,63 +303,99 @@
 
         /* COMANDOS */
 
-        .commands {
+        .command-preview {
             max-width: 800px;
             margin: auto;
-
-            background: #0d0d14;
-            border: 1px solid #24242e;
-            border-radius: 17px;
             overflow: hidden;
+            background: #0d0d14;
+            border: 1px solid #24242f;
+            border-radius: 17px;
         }
 
-        .commands-top {
+        .command-top {
             padding: 18px 22px;
-            border-bottom: 1px solid #24242e;
+            border-bottom: 1px solid #24242f;
             color: #888894;
             font-size: 13px;
         }
 
         .command {
             padding: 18px 22px;
-
             display: flex;
             justify-content: space-between;
             gap: 20px;
-
-            border-bottom: 1px solid #1d1d26;
+            border-bottom: 1px solid #1d1d27;
         }
 
         .command:last-child {
             border-bottom: none;
         }
 
-        .command-name {
-            color: #8f99ff;
-            font-family: monospace;
+        .command code {
+            color: #9da5ff;
             font-weight: bold;
         }
 
-        .command-description {
+        .command span {
             color: #777783;
-            text-align: right;
             font-size: 14px;
+        }
+
+        .commands-button {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        /* PRÓXIMOS SISTEMAS */
+
+        .coming {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 18px;
+        }
+
+        .coming-card {
+            position: relative;
+            padding: 30px;
+            overflow: hidden;
+            background: #101017;
+            border: 1px solid #24242f;
+            border-radius: 17px;
+        }
+
+        .coming-card h3 {
+            margin-bottom: 9px;
+        }
+
+        .coming-card p {
+            color: #858591;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .soon {
+            display: inline-block;
+            margin-top: 17px;
+            padding: 6px 10px;
+            background: rgba(88,101,242,.12);
+            color: #9da5ff;
+            border-radius: 50px;
+            font-size: 11px;
+            font-weight: bold;
         }
 
         /* CTA */
 
         .cta {
-            padding: 80px 25px;
+            padding: 80px 30px;
             text-align: center;
-
             background:
                 radial-gradient(
                     circle,
-                    rgba(88,101,242,0.2),
+                    rgba(88,101,242,.20),
                     transparent 60%
                 ),
                 #101017;
-
             border: 1px solid #28283a;
             border-radius: 25px;
         }
@@ -398,27 +413,26 @@
         }
 
         .cta .btn {
-            margin-top: 30px;
+            margin-top: 28px;
         }
 
         /* FOOTER */
 
         footer {
-            border-top: 1px solid #1d1d26;
             padding: 45px 25px;
+            border-top: 1px solid #1d1d26;
         }
 
         .footer-content {
             max-width: 1150px;
             margin: auto;
-
             display: flex;
             justify-content: space-between;
             align-items: center;
             gap: 25px;
         }
 
-        .copyright {
+        .footer-content p {
             color: #777783;
             font-size: 13px;
         }
@@ -437,19 +451,14 @@
             color: white;
         }
 
-        /* CELULAR */
-
         @media (max-width: 800px) {
-
             .nav-links a:not(.nav-add) {
                 display: none;
             }
 
-            .features {
-                grid-template-columns: 1fr;
-            }
-
-            .stats {
+            .stats,
+            .features,
+            .coming {
                 grid-template-columns: 1fr;
             }
 
@@ -464,19 +473,12 @@
 
             .command {
                 flex-direction: column;
-            }
-
-            .command-description {
-                text-align: left;
+                gap: 7px;
             }
 
             .footer-content {
                 flex-direction: column;
                 text-align: center;
-            }
-
-            .hero p {
-                font-size: 16px;
             }
         }
     </style>
@@ -485,28 +487,19 @@
 <body>
 
 <header>
-
     <nav>
-
-        <a href="#inicio" class="logo">
+        <a href="index.html" class="logo">
             Honra<span>Dinho</span>
         </a>
 
         <div class="nav-links">
+            <a href="#recursos">Recursos</a>
 
-            <a href="#recursos">
-                Recursos
-            </a>
+            <!-- AGORA ABRE A PÁGINA DE COMANDOS -->
+            <a href="comandos.html">Comandos</a>
 
-            <a href="#comandos">
-                Comandos
-            </a>
+            <a href="#futuro">Novidades</a>
 
-            <a href="#sobre">
-                Sobre
-            </a>
-
-            <!-- BOTÃO DO DISCORD -->
             <a
                 href="https://discord.com/oauth2/authorize?client_id=1535116053649162300&scope=bot%20applications.commands&permissions=8"
                 target="_blank"
@@ -515,54 +508,49 @@
             >
                 Adicionar
             </a>
-
         </div>
-
     </nav>
-
 </header>
-
 
 <main>
 
-    <!-- INÍCIO -->
+    <!-- HERO -->
 
-    <section class="hero" id="inicio">
+    <section class="hero">
 
         <div class="hero-content">
 
             <div class="badge">
-                🤖 BOT PARA DISCORD
+                🤖 HONRADINHO • DISCORD BOT
             </div>
 
             <h1>
-                Conheça o<br>
-                <span>HonraDinho</span>
+                Seu servidor.<br>
+                <span>Mais completo.</span>
             </h1>
 
             <p>
-                Um bot completo para transformar seu servidor
-                Discord em uma comunidade mais organizada,
-                divertida e poderosa.
+                Moderação, informações e novos sistemas
+                desenvolvidos para facilitar o gerenciamento
+                e melhorar a experiência da sua comunidade.
             </p>
 
             <div class="buttons">
 
-                <!-- BOTÃO PRINCIPAL DO DISCORD -->
                 <a
                     href="https://discord.com/oauth2/authorize?client_id=1535116053649162300&scope=bot%20applications.commands&permissions=8"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="btn btn-primary"
+                    class="btn primary"
                 >
                     🚀 Adicionar ao Discord
                 </a>
 
                 <a
-                    href="#recursos"
-                    class="btn btn-secondary"
+                    href="comandos.html"
+                    class="btn secondary"
                 >
-                    ⚡ Ver recursos
+                    📋 Ver comandos
                 </a>
 
             </div>
@@ -572,29 +560,23 @@
     </section>
 
 
-    <!-- ESTATÍSTICAS -->
+    <!-- STATUS -->
 
     <div class="stats">
 
         <div class="stat">
-            <div class="stat-number">24/7</div>
-            <div class="stat-text">
-                Disponibilidade
-            </div>
+            <strong>8</strong>
+            <span>Comandos atuais</span>
         </div>
 
         <div class="stat">
-            <div class="stat-number">∞</div>
-            <div class="stat-text">
-                Possibilidades
-            </div>
+            <strong>/</strong>
+            <span>Slash Commands</span>
         </div>
 
         <div class="stat">
-            <div class="stat-number">100%</div>
-            <div class="stat-text">
-                Foco na comunidade
-            </div>
+            <strong>∞</strong>
+            <span>Novos recursos chegando</span>
         </div>
 
     </div>
@@ -602,20 +584,17 @@
 
     <!-- RECURSOS -->
 
-    <section id="recursos">
+    <section class="content" id="recursos">
 
         <div class="section-title">
 
             <small>Recursos</small>
 
-            <h2>
-                Tudo para sua comunidade
-            </h2>
+            <h2>Conheça o HonraDinho</h2>
 
             <p>
-                Ferramentas para melhorar a experiência
-                dos membros e facilitar o gerenciamento
-                do seu servidor.
+                Uma base criada para receber cada vez
+                mais sistemas para seu servidor.
             </p>
 
         </div>
@@ -624,110 +603,62 @@
         <div class="features">
 
             <div class="feature">
-
-                <div class="feature-icon">
-                    🛡️
-                </div>
-
-                <h3>
-                    Moderação
-                </h3>
-
+                <div class="feature-icon">🛡️</div>
+                <h3>Moderação</h3>
                 <p>
-                    Ferramentas para manter seu servidor
-                    organizado e seguro.
+                    Expulsão, banimento e limpeza
+                    de mensagens diretamente por comandos.
                 </p>
-
             </div>
 
 
             <div class="feature">
-
-                <div class="feature-icon">
-                    🎮
-                </div>
-
-                <h3>
-                    Diversão
-                </h3>
-
+                <div class="feature-icon">👤</div>
+                <h3>Usuários</h3>
                 <p>
-                    Sistemas interativos para aumentar
-                    a diversão da comunidade.
+                    Consulte informações e avatares
+                    dos membros da comunidade.
                 </p>
-
             </div>
 
 
             <div class="feature">
-
-                <div class="feature-icon">
-                    🎫
-                </div>
-
-                <h3>
-                    Tickets
-                </h3>
-
+                <div class="feature-icon">📊</div>
+                <h3>Servidor</h3>
                 <p>
-                    Sistema para organizar suporte
-                    e atendimento aos membros.
+                    Consulte membros, canais, cargos
+                    e outras informações do servidor.
                 </p>
-
             </div>
 
 
             <div class="feature">
-
-                <div class="feature-icon">
-                    📊
-                </div>
-
-                <h3>
-                    Sistemas
-                </h3>
-
+                <div class="feature-icon">⚡</div>
+                <h3>Slash Commands</h3>
                 <p>
-                    Recursos completos para gerenciamento
-                    e interação.
+                    Comandos modernos integrados
+                    diretamente à interface do Discord.
                 </p>
-
             </div>
 
 
             <div class="feature">
-
-                <div class="feature-icon">
-                    ⚙️
-                </div>
-
-                <h3>
-                    Configuração
-                </h3>
-
+                <div class="feature-icon">🔐</div>
+                <h3>Permissões</h3>
                 <p>
-                    Personalize os sistemas do bot
-                    para sua comunidade.
+                    Comandos administrativos protegidos
+                    pelas permissões do Discord.
                 </p>
-
             </div>
 
 
             <div class="feature">
-
-                <div class="feature-icon">
-                    ✨
-                </div>
-
-                <h3>
-                    Atualizações
-                </h3>
-
+                <div class="feature-icon">✨</div>
+                <h3>Expansível</h3>
                 <p>
-                    Melhorias e novos recursos
-                    para o HonraDinho.
+                    Estrutura preparada para receber
+                    novos sistemas e funcionalidades.
                 </p>
-
             </div>
 
         </div>
@@ -737,106 +668,131 @@
 
     <!-- COMANDOS -->
 
-    <section id="comandos">
+    <section class="content">
 
         <div class="section-title">
 
             <small>Comandos</small>
 
-            <h2>
-                Controle tudo pelo Discord
-            </h2>
+            <h2>Controle pelo Discord</h2>
 
             <p>
-                Alguns exemplos dos comandos que
-                podem fazer parte do HonraDinho.
+                Alguns dos comandos disponíveis atualmente.
             </p>
 
         </div>
 
 
-        <div class="commands">
+        <div class="command-preview">
 
-            <div class="commands-top">
-                🤖 HonraDinho • comandos
+            <div class="command-top">
+                🤖 HonraDinho • Slash Commands
+            </div>
+
+            <div class="command">
+                <code>/ping</code>
+                <span>Verificar latência</span>
+            </div>
+
+            <div class="command">
+                <code>/server</code>
+                <span>Informações do servidor</span>
+            </div>
+
+            <div class="command">
+                <code>/userinfo</code>
+                <span>Informações de membros</span>
+            </div>
+
+            <div class="command">
+                <code>/avatar</code>
+                <span>Visualizar avatar</span>
+            </div>
+
+            <div class="command">
+                <code>/clear</code>
+                <span>Limpar mensagens</span>
+            </div>
+
+            <div class="command">
+                <code>/ban</code>
+                <span>Banir membros</span>
+            </div>
+
+        </div>
+
+
+        <div class="commands-button">
+
+            <a
+                href="comandos.html"
+                class="btn secondary"
+            >
+                📋 Ver todos os comandos →
+            </a>
+
+        </div>
+
+    </section>
+
+
+    <!-- FUTUROS SISTEMAS -->
+
+    <section class="content" id="futuro">
+
+        <div class="section-title">
+
+            <small>Em desenvolvimento</small>
+
+            <h2>Próximos sistemas</h2>
+
+            <p>
+                A estrutura do HonraDinho continuará
+                crescendo com novos recursos.
+            </p>
+
+        </div>
+
+
+        <div class="coming">
+
+            <div class="coming-card">
+                <h3>🎫 Sistema de Tickets</h3>
+                <p>
+                    Atendimento privado com abertura
+                    e fechamento de tickets.
+                </p>
+                <span class="soon">EM BREVE</span>
             </div>
 
 
-            <div class="command">
-
-                <span class="command-name">
-                    /help
-                </span>
-
-                <span class="command-description">
-                    Lista de comandos
-                </span>
-
+            <div class="coming-card">
+                <h3>👋 Boas-vindas</h3>
+                <p>
+                    Mensagens automáticas para novos
+                    membros da comunidade.
+                </p>
+                <span class="soon">EM BREVE</span>
             </div>
 
 
-            <div class="command">
-
-                <span class="command-name">
-                    /server
-                </span>
-
-                <span class="command-description">
-                    Informações do servidor
-                </span>
-
+            <div class="coming-card">
+                <h3>🏆 Níveis e XP</h3>
+                <p>
+                    Sistema de experiência, níveis
+                    e ranking de membros.
+                </p>
+                <span class="soon">EM BREVE</span>
             </div>
 
 
-            <div class="command">
-
-                <span class="command-name">
-                    /userinfo
-                </span>
-
-                <span class="command-description">
-                    Informações de um usuário
-                </span>
-
-            </div>
-
-
-            <div class="command">
-
-                <span class="command-name">
-                    /ticket
-                </span>
-
-                <span class="command-description">
-                    Sistema de atendimento
-                </span>
-
-            </div>
-
-
-            <div class="command">
-
-                <span class="command-name">
-                    /rank
-                </span>
-
-                <span class="command-description">
-                    Ranking da comunidade
-                </span>
-
-            </div>
-
-
-            <div class="command">
-
-                <span class="command-name">
-                    /config
-                </span>
-
-                <span class="command-description">
-                    Configurações do bot
-                </span>
-
+            <div class="coming-card">
+                <h3>💰 Economia</h3>
+                <p>
+                    Carteira, recompensas e sistemas
+                    econômicos dentro do servidor.
+                </p>
+                <span class="soon">EM BREVE</span>
             </div>
 
         </div>
@@ -844,29 +800,26 @@
     </section>
 
 
-    <!-- SOBRE -->
+    <!-- CTA -->
 
-    <section id="sobre">
+    <section class="content">
 
         <div class="cta">
 
-            <h2>
-                Pronto para começar?
-            </h2>
+            <h2>Adicione o HonraDinho</h2>
 
             <p>
-                Adicione o HonraDinho ao seu servidor
-                Discord e comece a aproveitar seus recursos.
+                Leve o HonraDinho para seu servidor
+                e acompanhe a evolução do projeto.
             </p>
 
-            <!-- SEGUNDO BOTÃO DO DISCORD -->
             <a
                 href="https://discord.com/oauth2/authorize?client_id=1535116053649162300&scope=bot%20applications.commands&permissions=8"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="btn btn-primary"
+                class="btn primary"
             >
-                🚀 Adicionar HonraDinho
+                🚀 Adicionar ao Discord
             </a>
 
         </div>
@@ -876,24 +829,26 @@
 </main>
 
 
-<!-- RODAPÉ -->
-
 <footer>
 
     <div class="footer-content">
 
-        <div class="copyright">
+        <p>
             © 2026 HonraDinho. Todos os direitos reservados.
-        </div>
+        </p>
 
         <div class="footer-links">
+
+            <a href="comandos.html">
+                Comandos
+            </a>
 
             <a href="terms.html">
                 Termos de Serviço
             </a>
 
             <a href="privacy.html">
-                Política de Privacidade
+                Privacidade
             </a>
 
         </div>
