@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Comandos | HonraDinho</title>
+
+    <meta
+        name="description"
+        content="Veja todos os comandos disponíveis no HonraDinho."
+    >
+
+    <style>
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: #07070d;
+            color: white;
+            min-height: 100vh;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+
+            width: 650px;
+            height: 650px;
+
+            top: -350px;
+            left: 50%;
+
+            transform: translateX(-50%);
+
+            background: #5865f2;
+
+            opacity: 0.14;
+            filter: blur(150px);
+
+            border-radius: 50%;
+
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* NAVBAR */
+
+        header {
+            position: fixed;
+
+            top: 0;
+            left: 0;
+
+            width: 100%;
+            z-index: 1000;
+
+            background: rgba(7, 7, 13, 0.82);
+
+            backdrop-filter: blur(18px);
+
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        nav {
+            max-width: 1150px;
+            height: 72px;
+
+            margin: auto;
+            padding: 0 25px;
+
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-size: 23px;
+            font-weight: 900;
+        }
+
+        .logo span {
+            color: #5865f2;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+
+        .nav-links a {
+            color: #a6a6b0;
+            font-size: 14px;
+
+            transition: .2s;
+        }
+
+        .nav-links a:hover {
+            color: white;
+        }
+
+        .nav-add {
+            background: #5865f2;
+
+            color: white !important;
+
+            padding: 10px 17px;
+
+            border-radius: 9px;
+
+            font-weight: bold;
+        }
+
+        .nav-add:hover {
+            background: #4752c4;
+        }
+
+        /* HERO */
+
+        .hero {
+            padding: 150px 25px 70px;
+
+            text-align: center;
+
+            max-width: 900px;
+
+            margin: auto;
+        }
+
+        .tag {
+            display: inline-block;
+
+            margin-bottom: 20px;
+
+            padding: 8px 15px;
+
+            border-radius: 50px;
+
+            border: 1px solid rgba(88,101,242,.4);
+
+            background: rgba(88,101,242,.1);
+
+            color: #9da5ff;
+
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .hero h1 {
+            font-size: clamp(45px, 8vw, 75px);
+
+            letter-spacing: -3px;
+
+            margin-bottom: 20px;
+        }
+
+        .hero h1 span {
+            color: #5865f2;
+        }
+
+        .hero p {
+            max-width: 650px;
+
+            margin: auto;
+
+            color: #90909c;
+
+            font-size: 17px;
+
+            line-height: 1.7;
+        }
+
+        /* SEARCH */
+
+        .search-container {
+            max-width: 700px;
+
+            margin: 35px auto 0;
+
+            position: relative;
+        }
+
+        .search-container input {
+            width: 100%;
+
+            padding: 16px 20px;
+
+            border-radius: 12px;
+
+            border: 1px solid #292935;
+
+            background: #101017;
+
+            color: white;
+
+            outline: none;
+
+            font-size: 15px;
+        }
+
+        .search-container input:focus {
+            border-color: #5865f2;
+        }
+
+        /* CONTEÚDO */
+
+        main {
+            max-width: 1100px;
+
+            margin: auto;
+
+            padding: 20px 25px 120px;
+        }
+
+        .category {
+            margin-top: 70px;
+        }
+
+        .category-title {
+            margin-bottom: 25px;
+        }
+
+        .category-title small {
+            color: #5865f2;
+
+            text-transform: uppercase;
+
+            font-weight: bold;
+
+            letter-spacing: 2px;
+        }
+
+        .category-title h2 {
+            font-size: 30px;
+
+            margin-top: 8px;
+        }
+
+        .commands-grid {
+            display: grid;
+
+            grid-template-columns: repeat(2, 1fr);
+
+            gap: 17px;
+        }
+
+        .command-card {
+            background: #101017;
+
+            border: 1px solid #24242f;
+
+            border-radius: 16px;
+
+            padding: 25px;
+
+            transition: .25s;
+        }
+
+        .command-card:hover {
+            transform: translateY(-4px);
+
+            border-color: rgba(88,101,242,.7);
+        }
+
+        .command-top {
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            gap: 15px;
+
+            margin-bottom: 15px;
+        }
+
+        .command-name {
+            display: inline-block;
+
+            padding: 7px 11px;
+
+            border-radius: 8px;
+
+            background: rgba(88,101,242,.13);
+
+            color: #9da5ff;
+
+            font-family: monospace;
+
+            font-size: 16px;
+
+            font-weight: bold;
+        }
+
+        .permission {
+            font-size: 11px;
+
+            border-radius: 50px;
+
+            padding: 6px 10px;
+
+            background: rgba(255,255,255,.05);
+
+            color: #9999a5;
+        }
+
+        .permission.admin {
+            background: rgba(237,66,69,.12);
+
+            color: #ff8487;
+        }
+
+        .command-card p {
+            color: #90909c;
+
+            line-height: 1.6;
+
+            font-size: 14px;
+        }
+
+        .usage {
+            margin-top: 17px;
+
+            padding-top: 15px;
+
+            border-top: 1px solid #24242f;
+        }
+
+        .usage small {
+            color: #666675;
+
+            display: block;
+
+            margin-bottom: 6px;
+        }
+
+        .usage code {
+            color: #c4c8ff;
+
+            font-family: monospace;
+        }
+
+        /* INFO */
+
+        .info-box {
+            margin-top: 80px;
+
+            padding: 40px;
+
+            border-radius: 20px;
+
+            background:
+                radial-gradient(
+                    circle at top,
+                    rgba(88,101,242,.18),
+                    transparent 60%
+                ),
+                #101017;
+
+            border: 1px solid #28283a;
+
+            text-align: center;
+        }
+
+        .info-box h2 {
+            font-size: 32px;
+
+            margin-bottom: 12px;
+        }
+
+        .info-box p {
+            color: #90909c;
+
+            max-width: 650px;
+
+            margin: auto;
+
+            line-height: 1.7;
+        }
+
+        .btn {
+            display: inline-block;
+
+            margin-top: 25px;
+
+            background: #5865f2;
+
+            padding: 14px 22px;
+
+            border-radius: 10px;
+
+            font-weight: bold;
+
+            transition: .25s;
+        }
+
+        .btn:hover {
+            background: #4752c4;
+
+            transform: translateY(-3px);
+        }
+
+        /* FOOTER */
+
+        footer {
+            border-top: 1px solid #1d1d26;
+
+            padding: 45px 25px;
+        }
+
+        .footer-content {
+            max-width: 1100px;
+
+            margin: auto;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            gap: 20px;
+        }
+
+        .footer-content p {
+            color: #777783;
+
+            font-size: 13px;
+        }
+
+        .footer-links {
+            display: flex;
+
+            gap: 20px;
+        }
+
+        .footer-links a {
+            color: #777783;
+
+            font-size: 13px;
+        }
+
+        .footer-links a:hover {
+            color: white;
+        }
+
+        /* MOBILE */
+
+        @media (max-width: 800px) {
+
+            .nav-links a:not(.nav-add) {
+                display: none;
+            }
+
+            .commands-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .footer-content {
+                flex-direction: column;
+
+                text-align: center;
+            }
+
+            .hero h1 {
+                letter-spacing: -2px;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+
+<!-- NAVBAR -->
+
+<header>
+
+    <nav>
+
+        <a href="index.html" class="logo">
+            Honra<span>Dinho</span>
+        </a>
+
+        <div class="nav-links">
+
+            <a href="index.html">
+                Início
+            </a>
+
+            <a href="comandos.html">
+                Comandos
+            </a>
+
+            <a href="terms.html">
+                Termos
+            </a>
+
+            <a
+                href="https://discord.com/oauth2/authorize?client_id=1535116053649162300&scope=bot%20applications.commands&permissions=8"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="nav-add"
+            >
+                Adicionar
+            </a>
+
+        </div>
+
+    </nav>
+
+</header>
+
+
+<!-- HERO -->
+
+<section class="hero">
+
+    <div class="tag">
+        ⚡ COMANDOS DO HONRADINHO
+    </div>
+
+    <h1>
+        Explore os
+        <span>comandos</span>
+    </h1>
+
+    <p>
+        Veja os comandos disponíveis no HonraDinho,
+        suas funções e como utilizá-los dentro do Discord.
+    </p>
+
+
+    <div class="search-container">
+
+        <input
+            type="text"
+            id="search"
+            placeholder="🔎 Pesquisar comando..."
+            onkeyup="searchCommands()"
+        >
+
+    </div>
+
+</section>
+
+
+<main>
+
+
+<!-- INFORMAÇÕES -->
+
+<section class="category">
+
+    <div class="category-title">
+
+        <small>Informações</small>
+
+        <h2>
+            📊 Comandos gerais
+        </h2>
+
+    </div>
+
+
+    <div class="commands-grid">
+
+
+        <div class="command-card">
+
+            <div class="command-top">
+
+                <span class="command-name">
+                    /ping
+                </span>
+
+                <span class="permission">
+                    Todos
+                </span>
+
+            </div>
+
+            <p>
+                Mostra a latência atual do HonraDinho
+                em milissegundos.
+            </p>
+
+            <div class="usage">
+
+                <small>Como usar</small>
+
+                <code>/ping</code>
+
+            </div>
+
+        </div>
+
+
+        <div class="command-card">
+
+            <div class="command-top">
+
+                <span class="command-name">
+                    /ajuda
+                </span>
+
+                <span class="permission">
+                    Todos
+                </span>
+
+            </div>
+
+            <p>
+                Abre a central de ajuda e mostra
+                os comandos disponíveis.
+            </p>
+
+            <div class="usage">
+
+                <small>Como usar</small>
+
+                <code>/ajuda</code>
+
+            </div>
+
+        </div>
+
+
+        <div class="command-card">
+
+            <div class="command-top">
+
+                <span class="command-name">
+                    /server
+                </span>
+
+                <span class="permission">
+                    Todos
+                </span>
+
+            </div>
+
+            <p>
+                Exibe informações sobre o servidor,
+                incluindo membros, canais, cargos e ID.
+            </p>
+
+            <div class="usage">
+
+                <small>Como usar</small>
+
+                <code>/server</code>
+
+            </div>
+
+        </div>
+
+
+        <div class="command-card">
+
+            <div class="command-top">
+
+                <span class="command-name">
+                    /userinfo
+                </span>
+
+                <span class="permission">
+                    Todos
+                </span>
+
+            </div>
+
+            <p>
+                Mostra informações de um membro,
+                como nome, ID e data de criação da conta.
+            </p>
+
+            <div class="usage">
+
+                <small>Como usar</small>
+
+                <code>/userinfo membro:@usuario</code>
+
+            </div>
+
+        </div>
+
+
+        <div class="command-card">
+
+            <div class="command-top">
+
+                <span class="command-name">
+                    /avatar
+                </span>
+
+                <span class="permission">
+                    Todos
+                </span>
+
+            </div>
+
+            <p>
+                Exibe o avatar de um membro
+                em tamanho maior.
+            </p>
+
+            <div class="usage">
+
+                <small>Como usar</small>
+
+                <code>/avatar membro:@usuario</code>
+
+            </div>
+
+        </div>
+
+
+    </div>
+
+</section>
+
+
+<!-- MODERAÇÃO -->
+
+<section class="category">
+
+    <div class="category-title">
+
+        <small>Moderação</small>
+
+        <h2>
+            🛡️ Administração
+        </h2>
+
+    </div>
+
+
+    <div class="commands-grid">
+
+
+        <div class="command-card">
+
+            <div class="command-top">
+
+                <span class="command-name">
+                    /clear
+                </span>
+
+                <span class="permission admin">
+                    Moderador
+                </span>
+
+            </div>
+
+            <p>
+                Apaga mensagens do canal.
+                É possível apagar entre 1 e 100 mensagens.
+            </p>
+
+            <div class="usage">
+
+                <small>Como usar</small>
+
+                <code>/clear quantidade:10</code>
+
+            </div>
+
+        </div>
+
+
+        <div class="command-card">
+
+            <div class="command-top">
+
+                <span class="command-name">
+                    /kick
+                </span>
+
+                <span class="permission admin">
+                    Moderador
+                </span>
+
+            </div>
+
+            <p>
+                Expulsa um membro do servidor
+                e permite informar o motivo.
+            </p>
+
+            <div class="usage">
+
+                <small>Como usar</small>
+
+                <code>/kick membro:@usuario motivo:Motivo</code>
+
+            </div>
+
+        </div>
+
+
+        <div class="command-card">
+
+            <div class="command-top">
+
+                <span class="command-name">
+                    /ban
+                </span>
+
+                <span class="permission admin">
+                    Moderador
+                </span>
+
+            </div>
+
+            <p>
+                Bane permanentemente um membro
+                do servidor e registra o motivo.
+            </p>
+
+            <div class="usage">
+
+                <small>Como usar</small>
+
+                <code>/ban membro:@usuario motivo:Motivo</code>
+
+            </div>
+
+        </div>
+
+
+    </div>
+
+</section>
+
+
+<!-- FUTUROS RECURSOS -->
+
+<div class="info-box">
+
+    <h2>
+        🚀 Mais comandos em breve
+    </h2>
+
+    <p>
+        O HonraDinho continuará recebendo novos
+        sistemas de moderação, tickets, níveis,
+        economia, boas-vindas e muito mais.
+    </p>
+
+    <a
+        href="https://discord.com/oauth2/authorize?client_id=1535116053649162300&scope=bot%20applications.commands&permissions=8"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="btn"
+    >
+        🤖 Adicionar HonraDinho
+    </a>
+
+</div>
+
+
+</main>
+
+
+<footer>
+
+    <div class="footer-content">
+
+        <p>
+            © 2026 HonraDinho.
+            Todos os direitos reservados.
+        </p>
+
+        <div class="footer-links">
+
+            <a href="index.html">
+                Início
+            </a>
+
+            <a href="terms.html">
+                Termos de Serviço
+            </a>
+
+            <a href="privacy.html">
+                Política de Privacidade
+            </a>
+
+        </div>
+
+    </div>
+
+</footer>
+
+
+<script>
+
+function searchCommands() {
+
+    const input =
+        document
+        .getElementById("search")
+        .value
+        .toLowerCase();
+
+    const cards =
+        document
+        .querySelectorAll(".command-card");
+
+
+    cards.forEach(card => {
+
+        const text =
+            card
+            .innerText
+            .toLowerCase();
+
+        if (text.includes(input)) {
+
+            card.style.display = "block";
+
+        } else {
+
+            card.style.display = "none";
+
+        }
+
+    });
+
+}
+
+</script>
+
+
+</body>
+</html>
