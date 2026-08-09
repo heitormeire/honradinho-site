@@ -1,954 +1,178 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Comandos | HonraDinho</title>
-
-    <meta
-        name="description"
-        content="Veja todos os comandos disponíveis no HonraDinho."
-    >
-
-    <style>
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        html {
-            scroll-behavior: smooth;
-        }
-
-        body {
-            font-family: Arial, Helvetica, sans-serif;
-            background: #07070d;
-            color: white;
-            min-height: 100vh;
-        }
-
-        a {
-            text-decoration: none;
-            color: inherit;
-        }
-
-        body::before {
-            content: "";
-            position: fixed;
-
-            width: 650px;
-            height: 650px;
-
-            top: -350px;
-            left: 50%;
-
-            transform: translateX(-50%);
-
-            background: #5865f2;
-
-            opacity: 0.14;
-            filter: blur(150px);
-
-            border-radius: 50%;
-
-            pointer-events: none;
-            z-index: -1;
-        }
-
-        /* NAVBAR */
-
-        header {
-            position: fixed;
-
-            top: 0;
-            left: 0;
-
-            width: 100%;
-            z-index: 1000;
-
-            background: rgba(7, 7, 13, 0.82);
-
-            backdrop-filter: blur(18px);
-
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-        }
-
-        nav {
-            max-width: 1150px;
-            height: 72px;
-
-            margin: auto;
-            padding: 0 25px;
-
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .logo {
-            font-size: 23px;
-            font-weight: 900;
-        }
-
-        .logo span {
-            color: #5865f2;
-        }
-
-        .nav-links {
-            display: flex;
-            align-items: center;
-            gap: 25px;
-        }
-
-        .nav-links a {
-            color: #a6a6b0;
-            font-size: 14px;
-
-            transition: .2s;
-        }
-
-        .nav-links a:hover {
-            color: white;
-        }
-
-        .nav-add {
-            background: #5865f2;
-
-            color: white !important;
-
-            padding: 10px 17px;
-
-            border-radius: 9px;
-
-            font-weight: bold;
-        }
-
-        .nav-add:hover {
-            background: #4752c4;
-        }
-
-        /* HERO */
-
-        .hero {
-            padding: 150px 25px 70px;
-
-            text-align: center;
-
-            max-width: 900px;
-
-            margin: auto;
-        }
-
-        .tag {
-            display: inline-block;
-
-            margin-bottom: 20px;
-
-            padding: 8px 15px;
-
-            border-radius: 50px;
-
-            border: 1px solid rgba(88,101,242,.4);
-
-            background: rgba(88,101,242,.1);
-
-            color: #9da5ff;
-
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .hero h1 {
-            font-size: clamp(45px, 8vw, 75px);
-
-            letter-spacing: -3px;
-
-            margin-bottom: 20px;
-        }
-
-        .hero h1 span {
-            color: #5865f2;
-        }
-
-        .hero p {
-            max-width: 650px;
-
-            margin: auto;
-
-            color: #90909c;
-
-            font-size: 17px;
-
-            line-height: 1.7;
-        }
-
-        /* SEARCH */
-
-        .search-container {
-            max-width: 700px;
-
-            margin: 35px auto 0;
-
-            position: relative;
-        }
-
-        .search-container input {
-            width: 100%;
-
-            padding: 16px 20px;
-
-            border-radius: 12px;
-
-            border: 1px solid #292935;
-
-            background: #101017;
-
-            color: white;
-
-            outline: none;
-
-            font-size: 15px;
-        }
-
-        .search-container input:focus {
-            border-color: #5865f2;
-        }
-
-        /* CONTEÚDO */
-
-        main {
-            max-width: 1100px;
-
-            margin: auto;
-
-            padding: 20px 25px 120px;
-        }
-
-        .category {
-            margin-top: 70px;
-        }
-
-        .category-title {
-            margin-bottom: 25px;
-        }
-
-        .category-title small {
-            color: #5865f2;
-
-            text-transform: uppercase;
-
-            font-weight: bold;
-
-            letter-spacing: 2px;
-        }
-
-        .category-title h2 {
-            font-size: 30px;
-
-            margin-top: 8px;
-        }
-
-        .commands-grid {
-            display: grid;
-
-            grid-template-columns: repeat(2, 1fr);
-
-            gap: 17px;
-        }
-
-        .command-card {
-            background: #101017;
-
-            border: 1px solid #24242f;
-
-            border-radius: 16px;
-
-            padding: 25px;
-
-            transition: .25s;
-        }
-
-        .command-card:hover {
-            transform: translateY(-4px);
-
-            border-color: rgba(88,101,242,.7);
-        }
-
-        .command-top {
-            display: flex;
-
-            justify-content: space-between;
-
-            align-items: center;
-
-            gap: 15px;
-
-            margin-bottom: 15px;
-        }
-
-        .command-name {
-            display: inline-block;
-
-            padding: 7px 11px;
-
-            border-radius: 8px;
-
-            background: rgba(88,101,242,.13);
-
-            color: #9da5ff;
-
-            font-family: monospace;
-
-            font-size: 16px;
-
-            font-weight: bold;
-        }
-
-        .permission {
-            font-size: 11px;
-
-            border-radius: 50px;
-
-            padding: 6px 10px;
-
-            background: rgba(255,255,255,.05);
-
-            color: #9999a5;
-        }
-
-        .permission.admin {
-            background: rgba(237,66,69,.12);
-
-            color: #ff8487;
-        }
-
-        .command-card p {
-            color: #90909c;
-
-            line-height: 1.6;
-
-            font-size: 14px;
-        }
-
-        .usage {
-            margin-top: 17px;
-
-            padding-top: 15px;
-
-            border-top: 1px solid #24242f;
-        }
-
-        .usage small {
-            color: #666675;
-
-            display: block;
-
-            margin-bottom: 6px;
-        }
-
-        .usage code {
-            color: #c4c8ff;
-
-            font-family: monospace;
-        }
-
-        /* INFO */
-
-        .info-box {
-            margin-top: 80px;
-
-            padding: 40px;
-
-            border-radius: 20px;
-
-            background:
-                radial-gradient(
-                    circle at top,
-                    rgba(88,101,242,.18),
-                    transparent 60%
-                ),
-                #101017;
-
-            border: 1px solid #28283a;
-
-            text-align: center;
-        }
-
-        .info-box h2 {
-            font-size: 32px;
-
-            margin-bottom: 12px;
-        }
-
-        .info-box p {
-            color: #90909c;
-
-            max-width: 650px;
-
-            margin: auto;
-
-            line-height: 1.7;
-        }
-
-        .btn {
-            display: inline-block;
-
-            margin-top: 25px;
-
-            background: #5865f2;
-
-            padding: 14px 22px;
-
-            border-radius: 10px;
-
-            font-weight: bold;
-
-            transition: .25s;
-        }
-
-        .btn:hover {
-            background: #4752c4;
-
-            transform: translateY(-3px);
-        }
-
-        /* FOOTER */
-
-        footer {
-            border-top: 1px solid #1d1d26;
-
-            padding: 45px 25px;
-        }
-
-        .footer-content {
-            max-width: 1100px;
-
-            margin: auto;
-
-            display: flex;
-
-            align-items: center;
-
-            justify-content: space-between;
-
-            gap: 20px;
-        }
-
-        .footer-content p {
-            color: #777783;
-
-            font-size: 13px;
-        }
-
-        .footer-links {
-            display: flex;
-
-            gap: 20px;
-        }
-
-        .footer-links a {
-            color: #777783;
-
-            font-size: 13px;
-        }
-
-        .footer-links a:hover {
-            color: white;
-        }
-
-        /* MOBILE */
-
-        @media (max-width: 800px) {
-
-            .nav-links a:not(.nav-add) {
-                display: none;
-            }
-
-            .commands-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .footer-content {
-                flex-direction: column;
-
-                text-align: center;
-            }
-
-            .hero h1 {
-                letter-spacing: -2px;
-            }
-
-        }
-
-    </style>
-
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Comandos do HonraDinho — Catálogo completo</title>
+    <meta name="description" content="Consulte os 42 comandos slash do HonraDinho para moderação, tickets, níveis, economia, boas-vindas, sugestões e informações.">
+    <meta name="theme-color" content="#070910">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="pt_BR">
+    <meta property="og:title" content="Comandos do HonraDinho">
+    <meta property="og:description" content="Pesquise e filtre o catálogo completo de comandos do HonraDinho.">
+    <meta property="og:url" content="https://heitormeire.github.io/honradinho-site/comandos.html">
+    <link rel="canonical" href="https://heitormeire.github.io/honradinho-site/comandos.html">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="styles.css">
 </head>
-
 <body>
+    <a class="skip-link" href="#catalogo">Pular para os comandos</a>
 
-
-<!-- NAVBAR -->
-
-<header>
-
-    <nav>
-
-        <a href="index.html" class="logo">
-            Honra<span>Dinho</span>
-        </a>
-
-        <div class="nav-links">
-
-            <a href="index.html">
-                Início
+    <header class="site-header">
+        <nav class="container nav-shell" aria-label="Navegação principal">
+            <a class="brand" href="index.html" aria-label="HonraDinho — início">
+                <span class="brand-mark" aria-hidden="true">H</span>
+                <span>Honra<span class="brand-accent">Dinho</span></span>
             </a>
+            <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false" data-menu-toggle><span></span></button>
+            <div class="nav-links" data-nav-links>
+                <a class="nav-link" href="index.html">Início</a>
+                <a class="nav-link" href="comandos.html" aria-current="page">Comandos</a>
+                <a class="nav-link" href="index.html#configurar">Configurar</a>
+                <a class="nav-link" href="index.html#suporte">Suporte</a>
+                <a class="btn btn-primary btn-sm" href="https://discord.com/oauth2/authorize?client_id=1535116053649162300&amp;scope=bot%20applications.commands&amp;permissions=1374658096214" target="_blank" rel="noopener noreferrer">Adicionar ao Discord</a>
+            </div>
+        </nav>
+    </header>
 
-            <a href="comandos.html">
-                Comandos
-            </a>
+    <main id="catalogo">
+        <section class="page-hero">
+            <div class="container">
+                <p class="eyebrow" style="margin-inline:auto"><span class="eyebrow-dot" aria-hidden="true"></span> 42 comandos slash</p>
+                <h1>Encontre o comando <span class="gradient-text">certo.</span></h1>
+                <p>Pesquise pelo nome, descrição ou uso. Você também pode filtrar por sistema para encontrar exatamente o que precisa.</p>
+            </div>
+        </section>
 
-            <a href="terms.html">
-                Termos
-            </a>
+        <section class="command-tools" aria-label="Filtros dos comandos">
+            <div class="container command-tools-inner">
+                <label class="search-box">
+                    <input type="search" aria-label="Pesquisar comandos" placeholder="Pesquisar por nome ou função…" autocomplete="off" data-command-search>
+                </label>
+                <div class="filter-list" aria-label="Categorias">
+                    <button class="filter-chip is-active" type="button" aria-pressed="true" data-command-filter="all">Todos</button>
+                    <button class="filter-chip" type="button" aria-pressed="false" data-command-filter="geral">Geral</button>
+                    <button class="filter-chip" type="button" aria-pressed="false" data-command-filter="moderacao">Moderação</button>
+                    <button class="filter-chip" type="button" aria-pressed="false" data-command-filter="tickets">Tickets</button>
+                    <button class="filter-chip" type="button" aria-pressed="false" data-command-filter="comunidade">Comunidade</button>
+                    <button class="filter-chip" type="button" aria-pressed="false" data-command-filter="niveis">Níveis</button>
+                    <button class="filter-chip" type="button" aria-pressed="false" data-command-filter="economia">Economia</button>
+                </div>
+            </div>
+        </section>
 
-            <a
-                href="https://discord.com/oauth2/authorize?client_id=1535116053649162300&scope=bot%20applications.commands&permissions=8"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="nav-add"
-            >
-                Adicionar
-            </a>
+        <div class="container commands-main">
+            <p class="results-meta" aria-live="polite"><strong data-command-count>42</strong> comandos encontrados</p>
 
+            <section class="command-section" data-command-section>
+                <div class="command-section-heading"><h2>📊 Geral e informações</h2><span>10 comandos</span></div>
+                <div class="commands-grid">
+                    <article class="command-card" data-command-card data-category="geral"><div class="command-card-top"><code>/ping</code><span class="permission">Todos</span></div><p>Mostra a latência atual do bot em milissegundos.</p><div class="usage">/ping</div></article>
+                    <article class="command-card" data-command-card data-category="geral"><div class="command-card-top"><code>/botinfo</code><span class="permission">Todos</span></div><p>Exibe servidores, usuários, latência e versão da biblioteca.</p><div class="usage">/botinfo</div></article>
+                    <article class="command-card" data-command-card data-category="geral"><div class="command-card-top"><code>/server</code><span class="permission">Todos</span></div><p>Mostra dono, membros, canais, cargos, ID e criação do servidor.</p><div class="usage">/server</div></article>
+                    <article class="command-card" data-command-card data-category="geral"><div class="command-card-top"><code>/userinfo</code><span class="permission">Todos</span></div><p>Consulta informações e datas de um membro.</p><div class="usage">/userinfo membro:@usuario</div></article>
+                    <article class="command-card" data-command-card data-category="geral"><div class="command-card-top"><code>/avatar</code><span class="permission">Todos</span></div><p>Exibe em destaque o avatar de um usuário.</p><div class="usage">/avatar membro:@usuario</div></article>
+                    <article class="command-card" data-command-card data-category="geral"><div class="command-card-top"><code>/uptime</code><span class="permission">Todos</span></div><p>Informa há quanto tempo a instância atual do bot está online.</p><div class="usage">/uptime</div></article>
+                    <article class="command-card" data-command-card data-category="geral"><div class="command-card-top"><code>/convite</code><span class="permission">Todos</span></div><p>Mostra os links oficiais de instalação, suporte e site.</p><div class="usage">/convite</div></article>
+                    <article class="command-card" data-command-card data-category="geral"><div class="command-card-top"><code>/privacidade</code><span class="permission">Todos</span></div><p>Abre a Política de Privacidade, os Termos e o suporte.</p><div class="usage">/privacidade</div></article>
+                    <article class="command-card" data-command-card data-category="geral"><div class="command-card-top"><code>/dados</code><span class="permission">Todos</span></div><p>Mostra, de forma privada, um resumo dos seus dados no servidor.</p><div class="usage">/dados</div></article>
+                    <article class="command-card" data-command-card data-category="geral"><div class="command-card-top"><code>/ajuda</code><span class="permission">Todos</span></div><p>Abre a central de ajuda com os principais grupos de comandos.</p><div class="usage">/ajuda</div></article>
+                </div>
+            </section>
+
+            <section class="command-section" data-command-section>
+                <div class="command-section-heading"><h2>🛡️ Moderação</h2><span>13 comandos</span></div>
+                <div class="commands-grid">
+                    <article class="command-card" data-command-card data-category="moderacao"><div class="command-card-top"><code>/clear</code><span class="permission mod">Moderador</span></div><p>Apaga de 1 a 100 mensagens do canal atual.</p><div class="usage">/clear quantidade:20</div></article>
+                    <article class="command-card" data-command-card data-category="moderacao"><div class="command-card-top"><code>/kick</code><span class="permission mod">Moderador</span></div><p>Expulsa um membro e registra o motivo nos logs configurados.</p><div class="usage">/kick membro:@usuario motivo:spam</div></article>
+                    <article class="command-card" data-command-card data-category="moderacao"><div class="command-card-top"><code>/ban</code><span class="permission mod">Moderador</span></div><p>Bane um membro do servidor e registra a ação.</p><div class="usage">/ban membro:@usuario motivo:regra</div></article>
+                    <article class="command-card" data-command-card data-category="moderacao"><div class="command-card-top"><code>/unban</code><span class="permission mod">Moderador</span></div><p>Remove um ban usando o ID do usuário.</p><div class="usage">/unban usuario_id:123… motivo:revisão</div></article>
+                    <article class="command-card" data-command-card data-category="moderacao"><div class="command-card-top"><code>/timeout</code><span class="permission mod">Moderador</span></div><p>Aplica timeout de 1 minuto a 28 dias em um membro.</p><div class="usage">/timeout membro:@usuario minutos:30</div></article>
+                    <article class="command-card" data-command-card data-category="moderacao"><div class="command-card-top"><code>/untimeout</code><span class="permission mod">Moderador</span></div><p>Remove o timeout aplicado a um membro.</p><div class="usage">/untimeout membro:@usuario</div></article>
+                    <article class="command-card" data-command-card data-category="moderacao"><div class="command-card-top"><code>/warn</code><span class="permission mod">Moderador</span></div><p>Registra uma advertência com moderador, motivo e data.</p><div class="usage">/warn membro:@usuario motivo:regra 3</div></article>
+                    <article class="command-card" data-command-card data-category="moderacao"><div class="command-card-top"><code>/warnings</code><span class="permission mod">Moderador</span></div><p>Lista até as 10 advertências mais recentes de um membro.</p><div class="usage">/warnings membro:@usuario</div></article>
+                    <article class="command-card" data-command-card data-category="moderacao"><div class="command-card-top"><code>/unwarn</code><span class="permission mod">Moderador</span></div><p>Remove uma advertência específica pelo número.</p><div class="usage">/unwarn aviso_id:12</div></article>
+                    <article class="command-card" data-command-card data-category="moderacao"><div class="command-card-top"><code>/clearwarnings</code><span class="permission mod">Moderador</span></div><p>Apaga todas as advertências registradas de um membro.</p><div class="usage">/clearwarnings membro:@usuario</div></article>
+                    <article class="command-card" data-command-card data-category="moderacao"><div class="command-card-top"><code>/slowmode</code><span class="permission mod">Moderador</span></div><p>Define o modo lento do canal entre 0 e 21.600 segundos.</p><div class="usage">/slowmode segundos:10</div></article>
+                    <article class="command-card" data-command-card data-category="moderacao"><div class="command-card-top"><code>/lock</code><span class="permission mod">Moderador</span></div><p>Bloqueia o envio de mensagens para @everyone no canal.</p><div class="usage">/lock</div></article>
+                    <article class="command-card" data-command-card data-category="moderacao"><div class="command-card-top"><code>/unlock</code><span class="permission mod">Moderador</span></div><p>Remove o bloqueio de envio configurado pelo /lock.</p><div class="usage">/unlock</div></article>
+                </div>
+            </section>
+
+            <section class="command-section" data-command-section>
+                <div class="command-section-heading"><h2>🎫 Tickets</h2><span>4 comandos</span></div>
+                <div class="commands-grid">
+                    <article class="command-card" data-command-card data-category="tickets"><div class="command-card-top"><code>/ticket</code><span class="permission mod">Moderador</span></div><p>Envia o painel persistente com Suporte, Denúncia, Compra e Parceria.</p><div class="usage">/ticket</div></article>
+                    <article class="command-card" data-command-card data-category="tickets"><div class="command-card-top"><code>/ticket-config staff</code><span class="permission admin">Admin</span></div><p>Define qual cargo da equipe poderá visualizar e assumir tickets.</p><div class="usage">/ticket-config staff cargo:@Staff</div></article>
+                    <article class="command-card" data-command-card data-category="tickets"><div class="command-card-top"><code>/ticket-config logs</code><span class="permission admin">Admin</span></div><p>Define onde abertura, fechamento e transcripts serão registrados.</p><div class="usage">/ticket-config logs canal:#logs</div></article>
+                    <article class="command-card" data-command-card data-category="tickets"><div class="command-card-top"><code>/ticket-config categoria</code><span class="permission admin">Admin</span></div><p>Escolhe a categoria onde os canais privados serão criados.</p><div class="usage">/ticket-config categoria categoria:TICKETS</div></article>
+                </div>
+            </section>
+
+            <section class="command-section" data-command-section>
+                <div class="command-section-heading"><h2>👋 Comunidade e configuração</h2><span>10 comandos</span></div>
+                <div class="commands-grid">
+                    <article class="command-card" data-command-card data-category="comunidade"><div class="command-card-top"><code>/welcome-config canal</code><span class="permission admin">Admin</span></div><p>Define o canal de mensagens de boas-vindas.</p><div class="usage">/welcome-config canal canal:#boas-vindas</div></article>
+                    <article class="command-card" data-command-card data-category="comunidade"><div class="command-card-top"><code>/welcome-config cargo</code><span class="permission admin">Admin</span></div><p>Define o cargo entregue automaticamente para novos membros.</p><div class="usage">/welcome-config cargo cargo:@Membro</div></article>
+                    <article class="command-card" data-command-card data-category="comunidade"><div class="command-card-top"><code>/welcome-config mensagem</code><span class="permission admin">Admin</span></div><p>Personaliza a mensagem usando variáveis como {user} e {server}.</p><div class="usage">/welcome-config mensagem mensagem:Bem-vindo {user}!</div></article>
+                    <article class="command-card" data-command-card data-category="comunidade"><div class="command-card-top"><code>/welcome-config despedida-canal</code><span class="permission admin">Admin</span></div><p>Define o canal usado quando um membro sai do servidor.</p><div class="usage">/welcome-config despedida-canal canal:#saidas</div></article>
+                    <article class="command-card" data-command-card data-category="comunidade"><div class="command-card-top"><code>/welcome-config despedida-mensagem</code><span class="permission admin">Admin</span></div><p>Personaliza a mensagem enviada na saída de um membro.</p><div class="usage">/welcome-config despedida-mensagem mensagem:{user} saiu.</div></article>
+                    <article class="command-card" data-command-card data-category="comunidade"><div class="command-card-top"><code>/logs-config moderacao</code><span class="permission admin">Admin</span></div><p>Escolhe o canal que recebe registros de moderação e mensagens.</p><div class="usage">/logs-config moderacao canal:#mod-logs</div></article>
+                    <article class="command-card" data-command-card data-category="comunidade"><div class="command-card-top"><code>/sugestoes-config canal</code><span class="permission admin">Admin</span></div><p>Define o canal oficial de sugestões da comunidade.</p><div class="usage">/sugestoes-config canal canal:#sugestoes</div></article>
+                    <article class="command-card" data-command-card data-category="comunidade"><div class="command-card-top"><code>/sugerir</code><span class="permission">Todos</span></div><p>Envia uma sugestão para o canal configurado, com votação e revisão.</p><div class="usage">/sugerir sugestao:Minha ideia…</div></article>
+                    <article class="command-card" data-command-card data-category="comunidade"><div class="command-card-top"><code>/enquete</code><span class="permission mod">Moderador</span></div><p>Cria uma enquete simples com duas a quatro opções.</p><div class="usage">/enquete pergunta:… opcao1:A opcao2:B</div></article>
+                    <article class="command-card" data-command-card data-category="comunidade"><div class="command-card-top"><code>/configuracao</code><span class="permission admin">Admin</span></div><p>Resume tickets, boas-vindas, autorole, logs e sugestões configurados.</p><div class="usage">/configuracao</div></article>
+                </div>
+            </section>
+
+            <section class="command-section" data-command-section>
+                <div class="command-section-heading"><h2>🏆 Níveis</h2><span>2 comandos</span></div>
+                <div class="commands-grid">
+                    <article class="command-card" data-command-card data-category="niveis"><div class="command-card-top"><code>/rank</code><span class="permission">Todos</span></div><p>Mostra nível, XP atual e progresso de um membro.</p><div class="usage">/rank membro:@usuario</div></article>
+                    <article class="command-card" data-command-card data-category="niveis"><div class="command-card-top"><code>/leaderboard</code><span class="permission">Todos</span></div><p>Exibe os 10 membros com maior nível e XP do servidor.</p><div class="usage">/leaderboard</div></article>
+                </div>
+            </section>
+
+            <section class="command-section" data-command-section>
+                <div class="command-section-heading"><h2>💰 Economia</h2><span>3 comandos</span></div>
+                <div class="commands-grid">
+                    <article class="command-card" data-command-card data-category="economia"><div class="command-card-top"><code>/economia saldo</code><span class="permission">Todos</span></div><p>Consulta o saldo de moedas de você ou de outro membro.</p><div class="usage">/economia saldo membro:@usuario</div></article>
+                    <article class="command-card" data-command-card data-category="economia"><div class="command-card-top"><code>/economia daily</code><span class="permission">Todos</span></div><p>Entrega uma recompensa diária aleatória entre 100 e 250 moedas.</p><div class="usage">/economia daily</div></article>
+                    <article class="command-card" data-command-card data-category="economia"><div class="command-card-top"><code>/economia pagar</code><span class="permission">Todos</span></div><p>Transfere moedas do seu saldo para outro membro.</p><div class="usage">/economia pagar membro:@usuario quantidade:100</div></article>
+                </div>
+            </section>
+
+            <div class="no-results" data-no-results>
+                <strong>Nenhum comando encontrado.</strong><br>
+                Tente outro nome ou selecione uma categoria diferente.
+            </div>
         </div>
 
-    </nav>
-
-</header>
-
-
-<!-- HERO -->
-
-<section class="hero">
-
-    <div class="tag">
-        ⚡ COMANDOS DO HONRADINHO
-    </div>
-
-    <h1>
-        Explore os
-        <span>comandos</span>
-    </h1>
-
-    <p>
-        Veja os comandos disponíveis no HonraDinho,
-        suas funções e como utilizá-los dentro do Discord.
-    </p>
-
-
-    <div class="search-container">
-
-        <input
-            type="text"
-            id="search"
-            placeholder="🔎 Pesquisar comando..."
-            onkeyup="searchCommands()"
-        >
-
-    </div>
-
-</section>
-
-
-<main>
-
-
-<!-- INFORMAÇÕES -->
-
-<section class="category">
-
-    <div class="category-title">
-
-        <small>Informações</small>
-
-        <h2>
-            📊 Comandos gerais
-        </h2>
-
-    </div>
-
-
-    <div class="commands-grid">
-
-
-        <div class="command-card">
-
-            <div class="command-top">
-
-                <span class="command-name">
-                    /ping
-                </span>
-
-                <span class="permission">
-                    Todos
-                </span>
-
+        <section class="section section-compact">
+            <div class="container">
+                <div class="cta-card">
+                    <span class="section-label">42 comandos e contando</span>
+                    <h2>Quer testar no seu servidor?</h2>
+                    <p>Adicione o HonraDinho e use <code>/ajuda</code> para começar.</p>
+                    <div class="cta-actions">
+                        <a class="btn btn-primary" href="https://discord.com/oauth2/authorize?client_id=1535116053649162300&amp;scope=bot%20applications.commands&amp;permissions=1374658096214" target="_blank" rel="noopener noreferrer">🚀 Adicionar ao Discord</a>
+                        <a class="btn btn-secondary" href="https://discord.gg/SvZHVPdbR" target="_blank" rel="noopener noreferrer">Servidor de suporte</a>
+                    </div>
+                </div>
             </div>
+        </section>
+    </main>
 
-            <p>
-                Mostra a latência atual do HonraDinho
-                em milissegundos.
-            </p>
-
-            <div class="usage">
-
-                <small>Como usar</small>
-
-                <code>/ping</code>
-
-            </div>
-
+    <footer class="site-footer">
+        <div class="container footer-grid">
+            <div><a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">H</span><span>Honra<span class="brand-accent">Dinho</span></span></a><p class="footer-copy">Bot para Discord com ferramentas de moderação, atendimento e comunidade.</p></div>
+            <div class="footer-column"><h2>Produto</h2><a href="index.html">Início</a><a href="comandos.html">Comandos</a><a href="index.html#configurar">Configuração</a></div>
+            <div class="footer-column"><h2>Suporte</h2><a href="https://discord.gg/SvZHVPdbR" target="_blank" rel="noopener noreferrer">Servidor oficial</a><a href="https://github.com/heitormeire/honradinho-site" target="_blank" rel="noopener noreferrer">GitHub</a></div>
+            <div class="footer-column"><h2>Legal</h2><a href="terms.html">Termos de Serviço</a><a href="privacy.html">Política de Privacidade</a></div>
         </div>
+        <div class="container footer-bottom"><span>© <span data-current-year>2026</span> HonraDinho.</span><span>Catálogo sincronizado com o código atual do bot.</span></div>
+    </footer>
 
-
-        <div class="command-card">
-
-            <div class="command-top">
-
-                <span class="command-name">
-                    /ajuda
-                </span>
-
-                <span class="permission">
-                    Todos
-                </span>
-
-            </div>
-
-            <p>
-                Abre a central de ajuda e mostra
-                os comandos disponíveis.
-            </p>
-
-            <div class="usage">
-
-                <small>Como usar</small>
-
-                <code>/ajuda</code>
-
-            </div>
-
-        </div>
-
-
-        <div class="command-card">
-
-            <div class="command-top">
-
-                <span class="command-name">
-                    /server
-                </span>
-
-                <span class="permission">
-                    Todos
-                </span>
-
-            </div>
-
-            <p>
-                Exibe informações sobre o servidor,
-                incluindo membros, canais, cargos e ID.
-            </p>
-
-            <div class="usage">
-
-                <small>Como usar</small>
-
-                <code>/server</code>
-
-            </div>
-
-        </div>
-
-
-        <div class="command-card">
-
-            <div class="command-top">
-
-                <span class="command-name">
-                    /userinfo
-                </span>
-
-                <span class="permission">
-                    Todos
-                </span>
-
-            </div>
-
-            <p>
-                Mostra informações de um membro,
-                como nome, ID e data de criação da conta.
-            </p>
-
-            <div class="usage">
-
-                <small>Como usar</small>
-
-                <code>/userinfo membro:@usuario</code>
-
-            </div>
-
-        </div>
-
-
-        <div class="command-card">
-
-            <div class="command-top">
-
-                <span class="command-name">
-                    /avatar
-                </span>
-
-                <span class="permission">
-                    Todos
-                </span>
-
-            </div>
-
-            <p>
-                Exibe o avatar de um membro
-                em tamanho maior.
-            </p>
-
-            <div class="usage">
-
-                <small>Como usar</small>
-
-                <code>/avatar membro:@usuario</code>
-
-            </div>
-
-        </div>
-
-
-    </div>
-
-</section>
-
-
-<!-- MODERAÇÃO -->
-
-<section class="category">
-
-    <div class="category-title">
-
-        <small>Moderação</small>
-
-        <h2>
-            🛡️ Administração
-        </h2>
-
-    </div>
-
-
-    <div class="commands-grid">
-
-
-        <div class="command-card">
-
-            <div class="command-top">
-
-                <span class="command-name">
-                    /clear
-                </span>
-
-                <span class="permission admin">
-                    Moderador
-                </span>
-
-            </div>
-
-            <p>
-                Apaga mensagens do canal.
-                É possível apagar entre 1 e 100 mensagens.
-            </p>
-
-            <div class="usage">
-
-                <small>Como usar</small>
-
-                <code>/clear quantidade:10</code>
-
-            </div>
-
-        </div>
-
-
-        <div class="command-card">
-
-            <div class="command-top">
-
-                <span class="command-name">
-                    /kick
-                </span>
-
-                <span class="permission admin">
-                    Moderador
-                </span>
-
-            </div>
-
-            <p>
-                Expulsa um membro do servidor
-                e permite informar o motivo.
-            </p>
-
-            <div class="usage">
-
-                <small>Como usar</small>
-
-                <code>/kick membro:@usuario motivo:Motivo</code>
-
-            </div>
-
-        </div>
-
-
-        <div class="command-card">
-
-            <div class="command-top">
-
-                <span class="command-name">
-                    /ban
-                </span>
-
-                <span class="permission admin">
-                    Moderador
-                </span>
-
-            </div>
-
-            <p>
-                Bane permanentemente um membro
-                do servidor e registra o motivo.
-            </p>
-
-            <div class="usage">
-
-                <small>Como usar</small>
-
-                <code>/ban membro:@usuario motivo:Motivo</code>
-
-            </div>
-
-        </div>
-
-
-    </div>
-
-</section>
-
-
-<!-- FUTUROS RECURSOS -->
-
-<div class="info-box">
-
-    <h2>
-        🚀 Mais comandos em breve
-    </h2>
-
-    <p>
-        O HonraDinho continuará recebendo novos
-        sistemas de moderação, tickets, níveis,
-        economia, boas-vindas e muito mais.
-    </p>
-
-    <a
-        href="https://discord.com/oauth2/authorize?client_id=1535116053649162300&scope=bot%20applications.commands&permissions=8"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="btn"
-    >
-        🤖 Adicionar HonraDinho
-    </a>
-
-</div>
-
-
-</main>
-
-
-<footer>
-
-    <div class="footer-content">
-
-        <p>
-            © 2026 HonraDinho.
-            Todos os direitos reservados.
-        </p>
-
-        <div class="footer-links">
-
-            <a href="index.html">
-                Início
-            </a>
-
-            <a href="terms.html">
-                Termos de Serviço
-            </a>
-
-            <a href="privacy.html">
-                Política de Privacidade
-            </a>
-
-        </div>
-
-    </div>
-
-</footer>
-
-
-<script>
-
-function searchCommands() {
-
-    const input =
-        document
-        .getElementById("search")
-        .value
-        .toLowerCase();
-
-    const cards =
-        document
-        .querySelectorAll(".command-card");
-
-
-    cards.forEach(card => {
-
-        const text =
-            card
-            .innerText
-            .toLowerCase();
-
-        if (text.includes(input)) {
-
-            card.style.display = "block";
-
-        } else {
-
-            card.style.display = "none";
-
-        }
-
-    });
-
-}
-
-</script>
-
-
+    <script src="app.js" defer></script>
 </body>
 </html>

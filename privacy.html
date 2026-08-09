@@ -1,58 +1,107 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HonraDinho — Política de Privacidade</title>
-<style>
-*{box-sizing:border-box}
-body{margin:0;font-family:Inter,Arial,sans-serif;background:#0f1117;color:#e8eaf0;line-height:1.65}
-header{background:linear-gradient(135deg,#5865f2,#7c3aed);padding:45px 20px;text-align:center}
-header h1{margin:0;font-size:36px}
-header p{margin:8px 0 0}
-main{max-width:900px;margin:35px auto;padding:0 20px}
-section{background:#171923;border:1px solid #292c38;border-radius:16px;padding:28px}
-h2{color:#8b93ff;margin-top:0}
-h3{color:#fff;margin-top:25px}
-.updated{font-size:13px;color:#9da3b5}
-.notice{background:#20243a;border-left:4px solid #5865f2;padding:14px 16px;border-radius:8px}
-footer{text-align:center;color:#8f95a5;padding:30px 20px}
-</style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Política de Privacidade — HonraDinho</title>
+    <meta name="description" content="Política de Privacidade do bot HonraDinho: dados processados, armazenamento, transcripts, retenção e solicitações de exclusão.">
+    <meta name="theme-color" content="#070910">
+    <link rel="canonical" href="https://heitormeire.github.io/honradinho-site/privacy.html">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header><h1>HonraDinho</h1><p>Política de Privacidade</p></header>
-<main><section id="privacidade">
-<h2>Política de Privacidade</h2>
-<p class="updated">Última atualização: 7 de agosto de 2026</p>
+    <a class="skip-link" href="#privacidade">Pular para a Política</a>
+    <header class="site-header">
+        <nav class="container nav-shell" aria-label="Navegação principal">
+            <a class="brand" href="index.html" aria-label="HonraDinho — início"><span class="brand-mark" aria-hidden="true">H</span><span>Honra<span class="brand-accent">Dinho</span></span></a>
+            <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false" data-menu-toggle><span></span></button>
+            <div class="nav-links" data-nav-links>
+                <a class="nav-link" href="index.html">Início</a>
+                <a class="nav-link" href="comandos.html">Comandos</a>
+                <a class="nav-link" href="privacy.html" aria-current="page">Privacidade</a>
+                <a class="nav-link" href="terms.html">Termos</a>
+                <a class="btn btn-primary btn-sm" href="https://discord.gg/SvZHVPdbR" target="_blank" rel="noopener noreferrer">Suporte</a>
+            </div>
+        </nav>
+    </header>
 
-<p>Esta Política explica, de forma simples, quais informações o HonraDinho pode processar e para quais finalidades.</p>
+    <main id="privacidade">
+        <div class="container legal-layout">
+            <aside class="legal-nav" aria-label="Nesta página">
+                <strong>Nesta página</strong>
+                <a href="#visao-geral">1. Visão geral</a>
+                <a href="#processados">2. Dados processados</a>
+                <a href="#armazenados">3. Dados armazenados</a>
+                <a href="#tickets">4. Tickets e logs</a>
+                <a href="#finalidades">5. Finalidades</a>
+                <a href="#retencao">6. Retenção e exclusão</a>
+                <a href="#compartilhamento">7. Compartilhamento</a>
+                <a href="#seguranca">8. Segurança</a>
+                <a href="#direitos">9. Seus controles</a>
+                <a href="#contato">10. Contato</a>
+            </aside>
 
-<h3>1. Informações que podem ser processadas</h3>
-<p>Dependendo dos recursos utilizados, o HonraDinho pode receber informações disponibilizadas pela plataforma Discord, como identificadores de usuários, servidores, canais, cargos, mensagens ou comandos necessários para executar determinada função.</p>
+            <article class="legal-card">
+                <span class="section-label">Transparência de dados</span>
+                <h1>Política de Privacidade</h1>
+                <p class="legal-updated">Última atualização: 8 de agosto de 2026</p>
 
-<h3>2. Finalidade</h3>
-<p>As informações podem ser utilizadas exclusivamente para fornecer, manter, proteger e melhorar as funcionalidades do HonraDinho, além de prevenir abusos e resolver problemas técnicos.</p>
+                <div class="notice">Esta Política descreve as práticas do código atual do HonraDinho. O bot usa dados do Discord apenas para operar os recursos solicitados e configurados no servidor.</div>
 
-<h3>3. Armazenamento</h3>
-<p>O armazenamento depende das funcionalidades efetivamente implementadas no bot. Informações que não sejam necessárias para uma função específica não devem ser armazenadas deliberadamente.</p>
+                <h2 id="visao-geral">1. Visão geral</h2>
+                <p>O HonraDinho processa informações disponibilizadas pela API do Discord quando isso é necessário para responder a comandos, moderar, criar tickets, registrar eventos ou operar sistemas de comunidade. Parte dessas informações é armazenada para que configurações e progresso continuem disponíveis após reinicializações.</p>
 
-<div class="notice"><strong>Importante:</strong> antes de publicar esta política, ajuste esta seção caso o seu código realmente salve dados em banco de dados, como IDs, configurações de servidores, economia, níveis, logs ou preferências.</div>
+                <h2 id="processados">2. Dados processados durante o uso</h2>
+                <p>Conforme o recurso utilizado, o bot pode processar:</p>
+                <ul>
+                    <li>IDs, nomes, menções, avatares e informações básicas de usuários e servidores;</li>
+                    <li>IDs e informações de canais, categorias e cargos;</li>
+                    <li>conteúdo de mensagens para conceder XP e para registrar mensagens apagadas ou editadas quando o servidor configurou logs de moderação;</li>
+                    <li>conteúdo, autores, horários e URLs de anexos das mensagens de um ticket quando um transcript é gerado;</li>
+                    <li>texto enviado a comandos, como motivos de moderação, sugestões, enquetes e mensagens personalizadas.</li>
+                </ul>
 
-<h3>4. Compartilhamento</h3>
-<p>O HonraDinho não deve vender informações pessoais. Dados podem ser processados por serviços técnicos utilizados para hospedar ou operar o bot quando isso for necessário para seu funcionamento.</p>
+                <h2 id="armazenados">3. Dados armazenados pelo bot</h2>
+                <p>Na versão atual, o HonraDinho utiliza um banco SQLite para manter:</p>
+                <ul>
+                    <li><strong>configurações do servidor:</strong> ID do servidor; IDs do cargo da staff, categoria de tickets, canais de tickets/logs/boas-vindas/despedidas/sugestões; ID do autorole; e modelos de mensagens de entrada e saída;</li>
+                    <li><strong>níveis e economia:</strong> ID do servidor, ID do usuário, XP, nível, saldo virtual e data da última recompensa diária;</li>
+                    <li><strong>advertências:</strong> ID do servidor, ID do usuário advertido, ID do moderador, motivo e data da advertência.</li>
+                </ul>
+                <p>O comando <code>/dados</code> permite que um usuário veja, de forma privada, um resumo dos registros de nível, economia e advertências associados a ele no servidor atual.</p>
 
-<h3>5. Segurança</h3>
-<p>São adotadas medidas razoáveis para proteger as informações processadas. Entretanto, nenhum sistema conectado à internet pode garantir segurança absoluta.</p>
+                <h2 id="tickets">4. Tickets, transcripts e logs</h2>
+                <p>O bot identifica tickets usando o ID do usuário na configuração interna do canal. Ao gerar ou fechar um ticket, o HonraDinho pode criar um arquivo de transcript com as mensagens existentes no canal e URLs de anexos.</p>
+                <p>O arquivo é enviado ao canal de logs de tickets configurado e, no fechamento, pode também ser enviado por mensagem direta ao usuário que abriu o ticket. O arquivo não é gravado no banco SQLite pelo código atual. Depois de enviado, a cópia passa a existir como conteúdo de uma mensagem no Discord e fica sujeita às configurações e à retenção daquele servidor/canal.</p>
+                <p>Quando logs de moderação estão habilitados, trechos de mensagens apagadas ou editadas podem ser publicados no canal de logs escolhido pelos administradores.</p>
 
-<h3>6. Exclusão de dados</h3>
-<p>Quando aplicável, o usuário ou administrador do servidor pode solicitar a exclusão de informações armazenadas pelo bot. A solicitação deve ser feita pelo canal oficial de suporte.</p>
+                <h2 id="finalidades">5. Para que os dados são usados</h2>
+                <p>Os dados são usados para entregar os recursos solicitados: identificar usuários e servidores, aplicar moderação, manter configurações, criar e gerenciar tickets, gerar transcripts, registrar advertências, calcular níveis, manter a economia virtual, entregar autorole, enviar mensagens de comunidade, registrar eventos e oferecer suporte.</p>
 
-<h3>7. Alterações nesta política</h3>
-<p>Esta política pode ser atualizada quando houver mudanças nas funcionalidades do HonraDinho, nos serviços utilizados ou nas exigências legais.</p>
+                <h2 id="retencao">6. Retenção e exclusão</h2>
+                <p>Configurações, níveis, economia e advertências permanecem no banco enquanto forem necessários para as funções correspondentes. Quando o bot recebe o evento de remoção de um servidor, o código atual apaga os registros locais associados àquele servidor.</p>
+                <p>Usuários e administradores também podem solicitar acesso, correção ou exclusão de dados pelo servidor de suporte. Pedidos são analisados de acordo com o tipo de registro, a conta/servidor envolvido e as obrigações aplicáveis. Transcripts e mensagens já enviados para canais do Discord podem exigir ação dos administradores do servidor que controla esses canais.</p>
 
-<h3>8. Contato</h3>
-<p>Para dúvidas, solicitações de privacidade ou pedidos de exclusão, utilize o canal de suporte oficial do HonraDinho.</p>
-</section></main>
-<footer>© 2026 HonraDinho</footer>
+                <h2 id="compartilhamento">7. Compartilhamento</h2>
+                <p>O HonraDinho não vende dados pessoais. O código atual não envia o banco de dados para serviços publicitários ou de análise. Informações podem aparecer nos canais do próprio Discord conforme a função utilizada — por exemplo, logs destinados à staff, rankings públicos e transcripts no canal de tickets configurado.</p>
+
+                <h2 id="seguranca">8. Segurança</h2>
+                <p>O token do bot é lido por variável de ambiente e não deve ser publicado no repositório. O projeto também ignora arquivos <code>.env</code> e bancos locais no controle de versão. A segurança física e a criptografia do armazenamento em produção dependem ainda da configuração do serviço usado para hospedar o bot.</p>
+
+                <h2 id="direitos">9. Seus controles</h2>
+                <p>Você pode usar <code>/dados</code> para consultar um resumo do que está associado à sua conta no servidor atual e <code>/privacidade</code> para acessar esta Política pelo Discord. Para solicitações de exclusão, correção ou dúvidas que precisem de atendimento, use o canal oficial de suporte.</p>
+
+                <h2 id="contato">10. Contato e alterações</h2>
+                <p>O ponto de contato do projeto é o <a href="https://discord.gg/SvZHVPdbR" target="_blank" rel="noopener noreferrer">servidor oficial de suporte do HonraDinho</a>. Esta Política pode ser revisada quando o código, a hospedagem, as funcionalidades ou os requisitos da plataforma mudarem. A data no início da página identifica a versão vigente.</p>
+                <p>O uso da plataforma Discord também está sujeito às políticas e práticas da própria Discord Inc. Consulte a <a href="https://discord.com/privacy" target="_blank" rel="noopener noreferrer">Política de Privacidade do Discord</a> para informações sobre o tratamento realizado pela plataforma.</p>
+            </article>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-bottom"><span>© <span data-current-year>2026</span> HonraDinho.</span><span><a href="terms.html">Termos de Serviço</a> · <a href="index.html">Voltar ao site</a></span></div>
+    </footer>
+    <script src="app.js" defer></script>
 </body>
 </html>
