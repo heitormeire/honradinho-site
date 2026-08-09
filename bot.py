@@ -2,7 +2,6 @@
 import os
 import io
 import re
-import json
 import random
 import sqlite3
 import datetime
@@ -17,7 +16,23 @@ from discord.ext import commands
 # CONFIGURAÇÃO / BANCO
 # =========================================================
 
-DB_PATH = "honradinho.db"
+APPLICATION_ID = "1535116053649162300"
+INVITE_PERMISSIONS = "1374658096214"
+INVITE_URL = (
+    "https://discord.com/oauth2/authorize"
+    f"?client_id={APPLICATION_ID}"
+    "&scope=bot%20applications.commands"
+    f"&permissions={INVITE_PERMISSIONS}"
+)
+SUPPORT_URL = "https://discord.gg/SvZHVPdbR"
+SITE_URL = "https://heitormeire.github.io/honradinho-site/"
+PRIVACY_URL = f"{SITE_URL}privacy.html"
+TERMS_URL = f"{SITE_URL}terms.html"
+
+DB_PATH = os.getenv("HONRADINHO_DB_PATH", "honradinho.db")
+BOT_STARTED_AT = discord.utils.utcnow()
+XP_COOLDOWN_SECONDS = 60
+xp_cooldowns: dict[tuple[int, int], datetime.datetime] = {}
 
 db = sqlite3.connect(DB_PATH)
 db.row_factory = sqlite3.Row
@@ -106,6 +121,21 @@ def get_user_stats(guild_id: int, user_id: int):
         (guild_id, user_id),
     )
     return cur.fetchone()
+
+
+def format_duration(total_seconds: int) -> str:
+    days, remainder = divmod(max(total_seconds, 0), 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    parts = []
+    if days:
+        parts.append(f"{days}d")
+    if hours or days:
+        parts.append(f"{hours}h")
+    if minutes or hours or days:
+        parts.append(f"{minutes}m")
+    parts.append(f"{seconds}s")
+    return " ".join(parts)
 
 
 # =========================================================
@@ -254,6 +284,18 @@ async def on_ready():
 
 
 @bot.event
+async def on_guild_remove(guild: discord.Guild):
+    cur.execute("DELETE FROM guild_config WHERE guild_id = ?", (guild.id,))
+    cur.execute("DELETE FROM user_stats WHERE guild_id = ?", (guild.id,))
+    cur.execute("DELETE FROM warnings WHERE guild_id = ?", (guild.id,))
+    db.commit()
+
+    stale_keys = [key for key in xp_cooldowns if key[0] == guild.id]
+    for key in stale_keys:
+        xp_cooldowns.pop(key, None)
+
+
+@bot.event
 async def on_member_join(member: discord.Member):
     cfg = get_guild_config(member.guild.id)
 
@@ -325,6 +367,14 @@ async def on_message(message: discord.Message):
     if message.author.bot or not message.guild:
         return
 
+    now = discord.utils.utcnow()
+    cooldown_key = (message.guild.id, message.author.id)
+    last_gain = xp_cooldowns.get(cooldown_key)
+    if last_gain and (now - last_gain).total_seconds() < XP_COOLDOWN_SECONDS:
+        await bot.process_commands(message)
+        return
+
+    xp_cooldowns[cooldown_key] = now
     ensure_user(message.guild.id, message.author.id)
     stats = get_user_stats(message.guild.id, message.author.id)
 
@@ -804,6 +854,55 @@ async def suggestions_channel(interaction: discord.Interaction, canal: discord.T
     await interaction.response.send_message(f"✅ Sugestões: {canal.mention}", ephemeral=True)
 
 
+@bot.tree.command(name="configuracao", description="Mostra a configuração atual do HonraDinho.")
+@app_commands.checks.has_permissions(administrator=True)
+async def configuration(interaction: discord.Interaction):
+    guild = interaction.guild
+    if not guild:
+        await interaction.response.send_message("❌ Use este comando em um servidor.", ephemeral=True)
+        return
+    cfg = get_guild_config(guild.id)
+
+    def channel_value(field: str) -> str:
+        return f"<#{cfg[field]}>" if cfg[field] else "Não configurado"
+
+    def role_value(field: str) -> str:
+        return f"<@&{cfg[field]}>" if cfg[field] else "Não configurado"
+
+    embed = discord.Embed(
+        title="⚙️ Configuração do HonraDinho",
+        description="Resumo dos sistemas configuráveis deste servidor.",
+        color=discord.Color.blurple(),
+    )
+    embed.add_field(
+        name="🎫 Tickets",
+        value=(
+            f"Staff: {role_value('ticket_staff_role_id')}\n"
+            f"Logs: {channel_value('ticket_logs_channel_id')}\n"
+            f"Categoria: {channel_value('ticket_category_id')}"
+        ),
+        inline=False,
+    )
+    embed.add_field(
+        name="👋 Comunidade",
+        value=(
+            f"Boas-vindas: {channel_value('welcome_channel_id')}\n"
+            f"Despedidas: {channel_value('goodbye_channel_id')}\n"
+            f"Autorole: {role_value('autorole_id')}"
+        ),
+        inline=False,
+    )
+    embed.add_field(
+        name="🧾 Canais",
+        value=(
+            f"Moderação: {channel_value('moderation_logs_channel_id')}\n"
+            f"Sugestões: {channel_value('suggestions_channel_id')}"
+        ),
+        inline=False,
+    )
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
 # =========================================================
 # COMANDOS: TICKET / INFO
 # =========================================================
@@ -851,6 +950,87 @@ async def botinfo(interaction: discord.Interaction):
     embed.add_field(name="Latência", value=f"{round(bot.latency * 1000)}ms")
     embed.add_field(name="Biblioteca", value=f"discord.py {discord.__version__}", inline=False)
     await interaction.response.send_message(embed=embed)
+
+
+@bot.tree.command(name="uptime", description="Mostra há quanto tempo o HonraDinho está online.")
+async def uptime(interaction: discord.Interaction):
+    seconds = int((discord.utils.utcnow() - BOT_STARTED_AT).total_seconds())
+    await interaction.response.send_message(
+        embed=discord.Embed(
+            title="⏱️ Uptime",
+            description=f"Online há **{format_duration(seconds)}**.",
+            color=discord.Color.green(),
+        )
+    )
+
+
+@bot.tree.command(name="convite", description="Mostra os links oficiais do HonraDinho.")
+async def invite(interaction: discord.Interaction):
+    view = discord.ui.View()
+    view.add_item(discord.ui.Button(label="Adicionar ao servidor", emoji="🚀", url=INVITE_URL))
+    view.add_item(discord.ui.Button(label="Servidor de suporte", emoji="💬", url=SUPPORT_URL))
+    view.add_item(discord.ui.Button(label="Site oficial", emoji="🌐", url=SITE_URL))
+    await interaction.response.send_message(
+        embed=discord.Embed(
+            title="🤖 HonraDinho",
+            description="Links oficiais para instalar o bot, pedir ajuda e acompanhar o projeto.",
+            color=discord.Color.blurple(),
+        ),
+        view=view,
+        ephemeral=True,
+    )
+
+
+@bot.tree.command(name="privacidade", description="Mostra a política de privacidade e os termos do bot.")
+async def privacy(interaction: discord.Interaction):
+    view = discord.ui.View()
+    view.add_item(discord.ui.Button(label="Privacidade", emoji="🔒", url=PRIVACY_URL))
+    view.add_item(discord.ui.Button(label="Termos", emoji="📄", url=TERMS_URL))
+    view.add_item(discord.ui.Button(label="Solicitar suporte", emoji="💬", url=SUPPORT_URL))
+    await interaction.response.send_message(
+        "Consulte como o HonraDinho trata dados ou peça ajuda para uma solicitação de dados.",
+        view=view,
+        ephemeral=True,
+    )
+
+
+@bot.tree.command(name="dados", description="Mostra um resumo dos seus dados salvos neste servidor.")
+async def my_data(interaction: discord.Interaction):
+    guild = interaction.guild
+    if not guild:
+        await interaction.response.send_message("❌ Use este comando em um servidor.", ephemeral=True)
+        return
+
+    cur.execute(
+        "SELECT xp, level, balance, last_daily FROM user_stats WHERE guild_id = ? AND user_id = ?",
+        (guild.id, interaction.user.id),
+    )
+    stats = cur.fetchone()
+    cur.execute(
+        "SELECT COUNT(*) AS total FROM warnings WHERE guild_id = ? AND user_id = ?",
+        (guild.id, interaction.user.id),
+    )
+    warning_count = cur.fetchone()["total"]
+
+    embed = discord.Embed(
+        title="🔐 Seus dados no HonraDinho",
+        description=f"Resumo do que está associado a você em **{guild.name}**.",
+        color=discord.Color.blurple(),
+    )
+    embed.add_field(name="ID do usuário", value=str(interaction.user.id), inline=False)
+    if stats:
+        embed.add_field(name="Nível / XP", value=f"{stats['level']} / {stats['xp']}")
+        embed.add_field(name="Saldo", value=f"{stats['balance']} moedas")
+        embed.add_field(name="Último daily", value=stats["last_daily"] or "Nunca", inline=False)
+    else:
+        embed.add_field(name="Níveis e economia", value="Nenhum registro salvo.", inline=False)
+    embed.add_field(name="Advertências", value=str(warning_count))
+    embed.add_field(
+        name="Privacidade e exclusão",
+        value=f"[Política de Privacidade]({PRIVACY_URL}) • [Servidor de suporte]({SUPPORT_URL})",
+        inline=False,
+    )
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 @bot.tree.command(name="server", description="Mostra informações do servidor.")
@@ -1016,6 +1196,97 @@ async def warnings(interaction: discord.Interaction, membro: discord.Member):
     )
 
 
+@bot.tree.command(name="unwarn", description="Remove uma advertência pelo número.")
+@app_commands.checks.has_permissions(moderate_members=True)
+async def unwarn(interaction: discord.Interaction, aviso_id: int):
+    cur.execute(
+        "SELECT user_id FROM warnings WHERE id = ? AND guild_id = ?",
+        (aviso_id, interaction.guild.id),
+    )
+    warning = cur.fetchone()
+    if not warning:
+        await interaction.response.send_message("❌ Advertência não encontrada neste servidor.", ephemeral=True)
+        return
+    cur.execute("DELETE FROM warnings WHERE id = ? AND guild_id = ?", (aviso_id, interaction.guild.id))
+    db.commit()
+    await interaction.response.send_message(
+        f"✅ Advertência `#{aviso_id}` de <@{warning['user_id']}> removida.",
+        ephemeral=True,
+    )
+
+
+@bot.tree.command(name="clearwarnings", description="Remove todas as advertências de um membro.")
+@app_commands.checks.has_permissions(moderate_members=True)
+async def clearwarnings(interaction: discord.Interaction, membro: discord.Member):
+    cur.execute(
+        "DELETE FROM warnings WHERE guild_id = ? AND user_id = ?",
+        (interaction.guild.id, membro.id),
+    )
+    removed = cur.rowcount
+    db.commit()
+    await interaction.response.send_message(
+        f"✅ {removed} advertência(s) removida(s) de {membro.mention}.",
+        ephemeral=True,
+    )
+
+
+@bot.tree.command(name="slowmode", description="Define o modo lento do canal em segundos.")
+@app_commands.checks.has_permissions(manage_channels=True)
+async def slowmode(interaction: discord.Interaction, segundos: app_commands.Range[int, 0, 21600]):
+    channel = interaction.channel
+    if not isinstance(channel, discord.TextChannel):
+        await interaction.response.send_message("❌ Use este comando em um canal de texto.", ephemeral=True)
+        return
+    try:
+        await channel.edit(slowmode_delay=segundos, reason=f"Alterado por {interaction.user}")
+        status = "desativado" if segundos == 0 else f"definido para **{segundos}s**"
+        await interaction.response.send_message(f"⏱️ Modo lento {status}.")
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ Não tenho permissão para editar este canal.", ephemeral=True)
+
+
+@bot.tree.command(name="lock", description="Bloqueia o envio de mensagens no canal para @everyone.")
+@app_commands.checks.has_permissions(manage_channels=True)
+async def lock_channel(interaction: discord.Interaction):
+    channel = interaction.channel
+    guild = interaction.guild
+    if not guild or not isinstance(channel, discord.TextChannel):
+        await interaction.response.send_message("❌ Use este comando em um canal de texto.", ephemeral=True)
+        return
+    overwrite = channel.overwrites_for(guild.default_role)
+    overwrite.send_messages = False
+    try:
+        await channel.set_permissions(
+            guild.default_role,
+            overwrite=overwrite,
+            reason=f"Canal bloqueado por {interaction.user}",
+        )
+        await interaction.response.send_message("🔒 Canal bloqueado para `@everyone`.")
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ Não tenho permissão para bloquear este canal.", ephemeral=True)
+
+
+@bot.tree.command(name="unlock", description="Remove o bloqueio de mensagens do canal para @everyone.")
+@app_commands.checks.has_permissions(manage_channels=True)
+async def unlock_channel(interaction: discord.Interaction):
+    channel = interaction.channel
+    guild = interaction.guild
+    if not guild or not isinstance(channel, discord.TextChannel):
+        await interaction.response.send_message("❌ Use este comando em um canal de texto.", ephemeral=True)
+        return
+    overwrite = channel.overwrites_for(guild.default_role)
+    overwrite.send_messages = None
+    try:
+        await channel.set_permissions(
+            guild.default_role,
+            overwrite=overwrite,
+            reason=f"Canal desbloqueado por {interaction.user}",
+        )
+        await interaction.response.send_message("🔓 Bloqueio do canal removido para `@everyone`.")
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ Não tenho permissão para desbloquear este canal.", ephemeral=True)
+
+
 # =========================================================
 # NÍVEIS
 # =========================================================
@@ -1171,12 +1442,15 @@ async def help_cmd(interaction: discord.Interaction):
     )
     embed.add_field(
         name="📊 Informações",
-        value="`/ping` `/botinfo` `/server` `/userinfo` `/avatar`",
+        value="`/ping` `/botinfo` `/server` `/userinfo` `/avatar` `/uptime` `/convite` `/privacidade` `/dados`",
         inline=False,
     )
     embed.add_field(
         name="🛡️ Moderação",
-        value="`/clear` `/kick` `/ban` `/unban` `/timeout` `/untimeout` `/warn` `/warnings`",
+        value=(
+            "`/clear` `/kick` `/ban` `/unban` `/timeout` `/untimeout` "
+            "`/warn` `/warnings` `/unwarn` `/clearwarnings` `/slowmode` `/lock` `/unlock`"
+        ),
         inline=False,
     )
     embed.add_field(
@@ -1186,7 +1460,7 @@ async def help_cmd(interaction: discord.Interaction):
     )
     embed.add_field(
         name="👋 Comunidade",
-        value="`/welcome-config ...` `/logs-config moderacao` `/sugestoes-config canal`",
+        value="`/welcome-config ...` `/logs-config moderacao` `/sugestoes-config canal` `/configuracao`",
         inline=False,
     )
     embed.add_field(
